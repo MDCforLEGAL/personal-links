@@ -28,7 +28,6 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
   min-height: 100dvh;
-  /* GPU hızlandırma */
   -webkit-font-smoothing: antialiased;
 }
 
@@ -224,6 +223,7 @@ body {
   height: 24px;
 }
 
+/* Platform colors */
 .instagram .link-icon {
   background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
   color: white;
@@ -231,6 +231,26 @@ body {
 
 .whatsapp .link-icon {
   background: #25D366;
+  color: white;
+}
+
+.youtube .link-icon {
+  background: #FF0000;
+  color: white;
+}
+
+.telegram .link-icon {
+  background: #26A5E4;
+  color: white;
+}
+
+.discord .link-icon {
+  background: #5865F2;
+  color: white;
+}
+
+.github .link-icon {
+  background: #24292e;
   color: white;
 }
 
@@ -283,7 +303,6 @@ body {
   transform: translateY(0);
 }
 
-/* Stagger delays via JS or CSS nth */
 .hero .reveal:nth-child(1) { transition-delay: 0.1s; }
 .hero .reveal:nth-child(2) { transition-delay: 0.25s; }
 .hero .reveal:nth-child(3) { transition-delay: 0.4s; }
