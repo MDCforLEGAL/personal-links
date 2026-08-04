@@ -1,6 +1,6 @@
 /* =====================================================
-   Kişisel Link Sayfası - Smooth Partikül + Animasyonlar
-   120fps hissi için optimize edilmiş vanilla JS
+   Personal Links Page - Smooth Particles + Animations
+   Optimized for 60-120fps feel (vanilla JS)
    ===================================================== */
 
 (() => {
@@ -12,18 +12,15 @@
 
   let width = 0;
   let height = 0;
-  let dpr = Math.min(window.devicePixelRatio || 1, 2); // performans için max 2x
+  let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-  // Partikül listesi
   const particles = [];
-  const MAX_PARTICLES = 120;          // soft limit
-  const SPAWN_ON_MOVE = 3;            // her hareketde kaç tane
-  const AMBIENT_COUNT = 25;           // sürekli yüzen partiküller
+  const MAX_PARTICLES = 120;
+  const SPAWN_ON_MOVE = 3;
+  const AMBIENT_COUNT = 25;
 
-  // Pointer pozisyonu
   let pointer = { x: -9999, y: -9999, active: false };
 
-  // Renkler (mavi tonları)
   const COLORS = [
     "rgba(0, 180, 255,",
     "rgba(0, 140, 255,",
@@ -37,7 +34,6 @@
       this.y = y;
       this.isAmbient = isAmbient;
 
-      // Hız
       const angle = Math.random() * Math.PI * 2;
       const speed = isAmbient
         ? 0.15 + Math.random() * 0.35
@@ -46,7 +42,6 @@
       this.vx = Math.cos(angle) * speed;
       this.vy = Math.sin(angle) * speed;
 
-      // Görünüm
       this.size = isAmbient
         ? 1 + Math.random() * 1.8
         : 2 + Math.random() * 3.5;
@@ -63,17 +58,12 @@
     update() {
       this.x += this.vx;
       this.y += this.vy;
-
-      // Hafif sürüklenme
       this.vx *= 0.985;
       this.vy *= 0.985;
 
-      // Ambient olanlar yavaşça yeniden doğsun
       if (this.isAmbient) {
         this.life -= this.decay;
-        if (this.life <= 0) {
-          this.resetAmbient();
-        }
+        if (this.life <= 0) this.resetAmbient();
       } else {
         this.life -= this.decay;
       }
@@ -98,7 +88,6 @@
       ctx.fillStyle = this.color + a + ")";
       ctx.fill();
 
-      // Hafif glow (sadece büyük partiküllerde)
       if (this.size > 2.2 && a > 0.3) {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2);
@@ -108,7 +97,6 @@
     }
   }
 
-  // Ambient partikülleri başlat
   function initAmbient() {
     for (let i = 0; i < AMBIENT_COUNT; i++) {
       particles.push(new Particle(
@@ -119,11 +107,9 @@
     }
   }
 
-  // Partikül spawn (mouse / touch)
   function spawnParticles(x, y, count = SPAWN_ON_MOVE) {
     for (let i = 0; i < count; i++) {
       if (particles.length >= MAX_PARTICLES) {
-        // En eski non-ambient'i sil
         const idx = particles.findIndex(p => !p.isAmbient);
         if (idx !== -1) particles.splice(idx, 1);
         else break;
@@ -132,7 +118,6 @@
     }
   }
 
-  // Resize
   function resize() {
     width = window.innerWidth;
     height = window.innerHeight;
@@ -143,31 +128,21 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  // Ana loop - requestAnimationFrame ile 60-120fps
-  let lastTime = 0;
   function animate(time) {
-    // Delta time (opsiyonel, şimdilik sabit hız)
-    // const dt = Math.min((time - lastTime) / 16.67, 2);
-    lastTime = time;
-
-    // Temizle (hafif trail efekti için alpha ile)
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "rgba(0, 0, 0, 0.22)"; // trail uzunluğu
+    ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
     ctx.fillRect(0, 0, width, height);
 
-    // Partikülleri güncelle ve çiz
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.update();
       p.draw();
 
-      // Ölü non-ambient'leri sil
       if (!p.isAmbient && p.life <= 0) {
         particles.splice(i, 1);
       }
     }
 
-    // Pointer glow (isteğe bağlı ekstra ışık)
     if (pointer.active) {
       const gradient = ctx.createRadialGradient(
         pointer.x, pointer.y, 0,
@@ -183,7 +158,7 @@
     requestAnimationFrame(animate);
   }
 
-  // ---------- EVENT LISTENERS ----------
+  // ---------- EVENTS ----------
   function onPointerMove(x, y) {
     pointer.x = x;
     pointer.y = y;
@@ -191,7 +166,6 @@
     spawnParticles(x, y);
   }
 
-  // Mouse
   window.addEventListener("mousemove", (e) => {
     onPointerMove(e.clientX, e.clientY);
   }, { passive: true });
@@ -200,7 +174,6 @@
     pointer.active = false;
   });
 
-  // Touch
   window.addEventListener("touchmove", (e) => {
     if (e.touches.length > 0) {
       const t = e.touches[0];
@@ -223,6 +196,48 @@
     resize();
   }, { passive: true });
 
+  // ---------- TYPEWRITER EFFECT ----------
+  function typeWriter(element, text, speed = 70, callback) {
+    let i = 0;
+    element.innerHTML = "";
+    element.classList.add("typing");
+
+    function type() {
+      if (i < text.length) {
+        // Handle line breaks
+        if (text.charAt(i) === "\n") {
+          element.innerHTML += "<br>";
+        } else {
+          element.innerHTML += text.charAt(i);
+        }
+        i++;
+        setTimeout(type, speed);
+      } else {
+        element.classList.remove("typing");
+        element.classList.add("typed");
+        if (callback) callback();
+      }
+    }
+    type();
+  }
+
+  function startTypewriters() {
+    const nameEl = document.getElementById("type-name");
+    const bioEl = document.getElementById("type-bio");
+
+    // Type name first
+    typeWriter(nameEl, "muddachergd", 90, () => {
+      // Then type bio after a short pause
+      setTimeout(() => {
+        typeWriter(bioEl, "Hello 👋\nAll my social accounts and contact channels are here.", 45, () => {
+          // After typing finishes, show the scroll hint
+          const hint = document.querySelector(".scroll-hint");
+          if (hint) hint.classList.add("visible");
+        });
+      }, 300);
+    });
+  }
+
   // ---------- SCROLL REVEAL ----------
   function initReveal() {
     const reveals = document.querySelectorAll(".reveal");
@@ -232,7 +247,6 @@
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add("visible");
-            // Bir kez göründükten sonra unobserve (performans)
             observer.unobserve(entry.target);
           }
         });
@@ -244,24 +258,19 @@
     );
 
     reveals.forEach((el) => observer.observe(el));
-
-    // Hero elemanlarını hemen göster (sayfa yüklenince)
-    setTimeout(() => {
-      document.querySelectorAll(".hero .reveal").forEach((el) => {
-        el.classList.add("visible");
-      });
-    }, 120);
   }
 
-  // ---------- BAŞLAT ----------
+  // ---------- INIT ----------
   function init() {
     resize();
     initAmbient();
     initReveal();
     requestAnimationFrame(animate);
+
+    // Start typewriter after a tiny delay so page feels ready
+    setTimeout(startTypewriters, 400);
   }
 
-  // DOM hazır olunca başlat
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else {
