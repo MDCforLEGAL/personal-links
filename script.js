@@ -226,7 +226,7 @@
     const bioEl = document.getElementById("type-bio");
 
     // Type name first
-    typeWriter(nameEl, "muddachergd", 90, () => {
+    typeWriter(nameEl, "MDC", 120, () => {
       // Then type bio after a short pause
       setTimeout(() => {
         typeWriter(bioEl, "Hello 👋\nAll my social accounts and contact channels are here.", 45, () => {
