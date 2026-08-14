@@ -62,6 +62,20 @@ body {
   width: 100%;
 }
 
+/* Top buttons (above profile photo) */
+.top-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto 2rem;
+}
+
+.top-buttons .link-card {
+  text-align: left;
+}
+
 /* Avatar */
 .avatar-ring {
   width: 110px;
