@@ -241,6 +241,12 @@ body {
 }
 
 /* Platform colors */
+.dkplus .link-icon {
+  background: linear-gradient(135deg, #FFD700, #FFA500, #FF8C00);
+  color: #1a1a1a;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
+
 .instagram .link-icon {
   background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
   color: white;
@@ -297,6 +303,13 @@ body {
 .link-card:hover .link-arrow {
   transform: translateX(4px);
   color: var(--blue);
+}
+
+/* Special hover for DK Plus */
+.dkplus:hover,
+.dkplus:focus-visible {
+  border-color: rgba(255, 215, 0, 0.45);
+  box-shadow: 0 12px 40px rgba(255, 215, 0, 0.18);
 }
 
 /* ==================== FOOTER ==================== */
