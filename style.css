@@ -53,7 +53,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.5rem;
+  padding: 1.25rem 1.5rem 2rem;
   text-align: center;
 }
 
@@ -62,14 +62,14 @@ body {
   width: 100%;
 }
 
-/* Top buttons (above profile photo) */
+/* Top buttons (above profile photo) - pushed higher */
 .top-buttons {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   width: 100%;
   max-width: 400px;
-  margin: 0 auto 2rem;
+  margin: 0 auto 1.5rem;
 }
 
 .top-buttons .link-card {
@@ -254,23 +254,26 @@ body {
   height: 24px;
 }
 
-/* Platform colors */
+/* ========== DK PLUS - Strong gold glow ========== */
 .dkplus {
-  border-color: rgba(255, 215, 0, 0.45);
-  animation: goldGlow 2.4s ease-in-out infinite;
+  border: 1.5px solid #FFD700 !important;
+  background: rgba(255, 215, 0, 0.08) !important;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.55), 0 0 36px rgba(255, 165, 0, 0.3) !important;
+  animation: goldGlow 2s ease-in-out infinite;
 }
 
 .dkplus .link-icon {
-  background: linear-gradient(135deg, #FFD700, #FFA500, #FF8C00);
-  color: #1a1a1a;
-  box-shadow: 0 0 14px rgba(255, 215, 0, 0.55);
+  background: linear-gradient(135deg, #FFD700, #FFA500, #FF8C00) !important;
+  color: #1a1a1a !important;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.7);
 }
 
 .dkplus:hover,
 .dkplus:focus-visible {
-  border-color: rgba(255, 215, 0, 0.7);
-  box-shadow: 0 0 28px rgba(255, 215, 0, 0.45), 0 12px 40px rgba(255, 165, 0, 0.2);
-  background: rgba(255, 215, 0, 0.06);
+  border-color: #FFD700 !important;
+  background: rgba(255, 215, 0, 0.14) !important;
+  box-shadow: 0 0 28px rgba(255, 215, 0, 0.7), 0 0 55px rgba(255, 165, 0, 0.4) !important;
+  transform: translateY(-4px) scale(1.02);
 }
 
 .dkplus:hover .link-arrow {
@@ -279,10 +282,10 @@ body {
 
 @keyframes goldGlow {
   0%, 100% {
-    box-shadow: 0 0 12px rgba(255, 215, 0, 0.35), 0 0 24px rgba(255, 165, 0, 0.15);
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.5), 0 0 28px rgba(255, 165, 0, 0.25);
   }
   50% {
-    box-shadow: 0 0 22px rgba(255, 215, 0, 0.55), 0 0 40px rgba(255, 165, 0, 0.28);
+    box-shadow: 0 0 26px rgba(255, 215, 0, 0.75), 0 0 50px rgba(255, 165, 0, 0.4);
   }
 }
 
@@ -376,6 +379,9 @@ body {
   }
   .link-card {
     padding: 1rem 1.15rem;
+  }
+  .hero {
+    padding-top: 1rem;
   }
 }
 
