@@ -294,6 +294,23 @@ body {
   color: white;
 }
 
+/* ========== MDC AI STUDIO ========== */
+.aistudio .link-icon {
+  background: linear-gradient(135deg, #7c3aed, #a855f7, #06b6d4);
+  color: white;
+  box-shadow: 0 0 14px rgba(124, 58, 237, 0.5);
+}
+
+.aistudio:hover,
+.aistudio:focus-visible {
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 12px 40px rgba(124, 58, 237, 0.25);
+}
+
+.aistudio:hover .link-arrow {
+  color: #a855f7;
+}
+
 .instagram .link-icon {
   background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
   color: white;
