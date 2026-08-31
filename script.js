@@ -1,24 +1,109 @@
 /* =====================================================
-   Personal Links Page - Smooth Particles + Animations
-   Optimized for 60-120fps feel (vanilla JS)
+   Personal Links Page - Adaptive performance + particles
+   Uses only public browser APIs (no tracking / no fingerprint send)
    ===================================================== */
 
 (() => {
   "use strict";
 
+  // ---------- PERFORMANCE TIER ----------
+  // high | mid | low  — decided locally, never uploaded
+  const perf = detectPerformance();
+  document.documentElement.setAttribute("data-perf", perf.tier);
+  document.documentElement.classList.add("perf-" + perf.tier);
+
+  const SETTINGS = {
+    high: { dprMax: 2, maxParticles: 120, spawn: 3, ambient: 25, typeName: 120, typeBio: 45, sendMs: 1100, particles: true, pointerGlow: true },
+    mid:  { dprMax: 1, maxParticles: 40,  spawn: 1, ambient: 8,  typeName: 70,  typeBio: 25, sendMs: 650,  particles: true, pointerGlow: false },
+    low:  { dprMax: 1, maxParticles: 0,   spawn: 0, ambient: 0,  typeName: 0,   typeBio: 0,  sendMs: 220,  particles: false, pointerGlow: false }
+  }[perf.tier];
+
+  function detectPerformance() {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const cores = navigator.hardwareConcurrency || 4;
+    const ram = navigator.deviceMemory || 4; // GB, Chrome/Android mostly
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const saveData = !!(conn && conn.saveData);
+    const slowNet = !!(conn && /2g|slow-2g/.test(conn.effectiveType || ""));
+    const dpr = window.devicePixelRatio || 1;
+    const small = Math.min(window.innerWidth, window.innerHeight) < 400;
+    const lowEndHint = cores <= 4 && ram <= 3;
+
+    let score = 8;
+    if (reduced) score -= 6;
+    if (saveData) score -= 3;
+    if (slowNet) score -= 2;
+    if (cores <= 2) score -= 3;
+    else if (cores <= 4) score -= 1;
+    if (ram <= 2) score -= 3;
+    else if (ram <= 4) score -= 1;
+    if (dpr >= 3 && lowEndHint) score -= 1; // heavy pixels on weak GPU
+    if (small && lowEndHint) score -= 1;
+
+    let tier = "high";
+    if (score <= 3) tier = "low";
+    else if (score <= 6) tier = "mid";
+
+    return { tier, score, reduced, cores, ram };
+  }
+
+  // Runtime FPS watchdog — if the page stutters, drop a tier
+  function watchFpsAndDowngrade() {
+    if (perf.tier === "low") return;
+    let frames = 0;
+    let last = performance.now();
+    function tick(now) {
+      frames++;
+      if (now - last >= 1500) {
+        const fps = (frames * 1000) / (now - last);
+        frames = 0;
+        last = now;
+        if (fps < 40 && perf.tier === "high") {
+          applyDowngrade("mid");
+        } else if (fps < 28) {
+          applyDowngrade("low");
+          return;
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function applyDowngrade(tier) {
+    perf.tier = tier;
+    document.documentElement.setAttribute("data-perf", tier);
+    document.documentElement.classList.remove("perf-high", "perf-mid", "perf-low");
+    document.documentElement.classList.add("perf-" + tier);
+    if (tier === "low") {
+      SETTINGS.particles = false;
+      SETTINGS.pointerGlow = false;
+      SETTINGS.sendMs = 220;
+      particles.length = 0;
+      if (canvas) {
+        const c = canvas.getContext("2d");
+        if (c) c.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.style.display = "none";
+      }
+    } else if (tier === "mid") {
+      SETTINGS.maxParticles = 40;
+      SETTINGS.spawn = 1;
+      SETTINGS.ambient = 8;
+      SETTINGS.pointerGlow = false;
+      SETTINGS.sendMs = 650;
+      while (particles.length > 40) particles.pop();
+    }
+  }
+
   // ---------- CANVAS & PARTICLES ----------
   const canvas = document.getElementById("particles");
-  const ctx = canvas.getContext("2d", { alpha: true });
+  const ctx = canvas ? canvas.getContext("2d", { alpha: true }) : null;
 
   let width = 0;
   let height = 0;
-  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let dpr = Math.min(window.devicePixelRatio || 1, SETTINGS.dprMax);
 
   const particles = [];
-  const MAX_PARTICLES = 120;
-  const SPAWN_ON_MOVE = 3;
-  const AMBIENT_COUNT = 25;
-
   let pointer = { x: -9999, y: -9999, active: false };
 
   const COLORS = [
@@ -41,16 +126,11 @@
 
       this.vx = Math.cos(angle) * speed;
       this.vy = Math.sin(angle) * speed;
-
-      this.size = isAmbient
-        ? 1 + Math.random() * 1.8
-        : 2 + Math.random() * 3.5;
-
+      this.size = isAmbient ? 1 + Math.random() * 1.8 : 2 + Math.random() * 3.5;
       this.life = 1;
       this.decay = isAmbient
         ? 0.0008 + Math.random() * 0.0015
         : 0.012 + Math.random() * 0.018;
-
       this.color = COLORS[(Math.random() * COLORS.length) | 0];
       this.alpha = isAmbient ? 0.25 + Math.random() * 0.35 : 0.7 + Math.random() * 0.3;
     }
@@ -60,7 +140,6 @@
       this.y += this.vy;
       this.vx *= 0.985;
       this.vy *= 0.985;
-
       if (this.isAmbient) {
         this.life -= this.decay;
         if (this.life <= 0) this.resetAmbient();
@@ -80,15 +159,13 @@
     }
 
     draw() {
-      if (this.life <= 0) return;
-
+      if (this.life <= 0 || !ctx) return;
       const a = this.alpha * this.life;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
       ctx.fillStyle = this.color + a + ")";
       ctx.fill();
-
-      if (this.size > 2.2 && a > 0.3) {
+      if (SETTINGS.pointerGlow && this.size > 2.2 && a > 0.3) {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2);
         ctx.fillStyle = this.color + (a * 0.18) + ")";
@@ -98,18 +175,17 @@
   }
 
   function initAmbient() {
-    for (let i = 0; i < AMBIENT_COUNT; i++) {
-      particles.push(new Particle(
-        Math.random() * width,
-        Math.random() * height,
-        true
-      ));
+    if (!SETTINGS.particles) return;
+    for (let i = 0; i < SETTINGS.ambient; i++) {
+      particles.push(new Particle(Math.random() * width, Math.random() * height, true));
     }
   }
 
-  function spawnParticles(x, y, count = SPAWN_ON_MOVE) {
-    for (let i = 0; i < count; i++) {
-      if (particles.length >= MAX_PARTICLES) {
+  function spawnParticles(x, y, count) {
+    if (!SETTINGS.particles) return;
+    const n = count == null ? SETTINGS.spawn : count;
+    for (let i = 0; i < n; i++) {
+      if (particles.length >= SETTINGS.maxParticles) {
         const idx = particles.findIndex(p => !p.isAmbient);
         if (idx !== -1) particles.splice(idx, 1);
         else break;
@@ -119,6 +195,7 @@
   }
 
   function resize() {
+    if (!canvas || !ctx) return;
     width = window.innerWidth;
     height = window.innerHeight;
     canvas.width = width * dpr;
@@ -128,7 +205,9 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  let rafId = 0;
   function animate() {
+    if (!SETTINGS.particles || !ctx) return;
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
     ctx.fillRect(0, 0, width, height);
@@ -137,17 +216,11 @@
       const p = particles[i];
       p.update();
       p.draw();
-
-      if (!p.isAmbient && p.life <= 0) {
-        particles.splice(i, 1);
-      }
+      if (!p.isAmbient && p.life <= 0) particles.splice(i, 1);
     }
 
-    if (pointer.active) {
-      const gradient = ctx.createRadialGradient(
-        pointer.x, pointer.y, 0,
-        pointer.x, pointer.y, 80
-      );
+    if (SETTINGS.pointerGlow && pointer.active) {
+      const gradient = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, 80);
       gradient.addColorStop(0, "rgba(0, 180, 255, 0.12)");
       gradient.addColorStop(0.5, "rgba(0, 140, 255, 0.04)");
       gradient.addColorStop(1, "rgba(0, 100, 255, 0)");
@@ -155,7 +228,7 @@
       ctx.fillRect(pointer.x - 80, pointer.y - 80, 160, 160);
     }
 
-    requestAnimationFrame(animate);
+    rafId = requestAnimationFrame(animate);
   }
 
   function onPointerMove(x, y) {
@@ -165,49 +238,35 @@
     spawnParticles(x, y);
   }
 
-  window.addEventListener("mousemove", (e) => {
-    onPointerMove(e.clientX, e.clientY);
-  }, { passive: true });
+  if (SETTINGS.particles) {
+    window.addEventListener("mousemove", (e) => onPointerMove(e.clientX, e.clientY), { passive: true });
+    window.addEventListener("mouseleave", () => { pointer.active = false; });
+    window.addEventListener("touchmove", (e) => {
+      if (e.touches.length > 0) onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    window.addEventListener("touchstart", (e) => {
+      if (e.touches.length > 0) onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    window.addEventListener("touchend", () => { pointer.active = false; });
+    window.addEventListener("resize", resize, { passive: true });
+  } else if (canvas) {
+    canvas.style.display = "none";
+  }
 
-  window.addEventListener("mouseleave", () => {
-    pointer.active = false;
-  });
-
-  window.addEventListener("touchmove", (e) => {
-    if (e.touches.length > 0) {
-      const t = e.touches[0];
-      onPointerMove(t.clientX, t.clientY);
+  // ---------- TYPEWRITER ----------
+  function typeWriter(element, text, speed, callback) {
+    if (!speed) {
+      element.innerHTML = text.replace(/\n/g, "<br>");
+      element.classList.add("typed");
+      if (callback) callback();
+      return;
     }
-  }, { passive: true });
-
-  window.addEventListener("touchstart", (e) => {
-    if (e.touches.length > 0) {
-      const t = e.touches[0];
-      onPointerMove(t.clientX, t.clientY);
-    }
-  }, { passive: true });
-
-  window.addEventListener("touchend", () => {
-    pointer.active = false;
-  });
-
-  window.addEventListener("resize", () => {
-    resize();
-  }, { passive: true });
-
-  // ---------- TYPEWRITER EFFECT ----------
-  function typeWriter(element, text, speed = 70, callback) {
     let i = 0;
     element.innerHTML = "";
     element.classList.add("typing");
-
     function type() {
       if (i < text.length) {
-        if (text.charAt(i) === "\n") {
-          element.innerHTML += "<br>";
-        } else {
-          element.innerHTML += text.charAt(i);
-        }
+        element.innerHTML += text.charAt(i) === "\n" ? "<br>" : text.charAt(i);
         i++;
         setTimeout(type, speed);
       } else {
@@ -222,36 +281,32 @@
   function startTypewriters() {
     const nameEl = document.getElementById("type-name");
     const bioEl = document.getElementById("type-bio");
+    const hint = document.querySelector(".scroll-hint");
 
-    typeWriter(nameEl, "MDC", 120, () => {
+    typeWriter(nameEl, "MDC", SETTINGS.typeName, () => {
       setTimeout(() => {
-        typeWriter(bioEl, "Hello 👋\nAll my social accounts and contact channels are here.", 45, () => {
-          const hint = document.querySelector(".scroll-hint");
+        typeWriter(bioEl, "Hello 👋\nAll my social accounts and contact channels are here.", SETTINGS.typeBio, () => {
           if (hint) hint.classList.add("visible");
         });
-      }, 300);
+      }, SETTINGS.typeName ? 200 : 0);
     });
   }
 
   // ---------- SCROLL REVEAL ----------
   function initReveal() {
     const reveals = document.querySelectorAll(".reveal");
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      {
-        threshold: 0.15,
-        rootMargin: "0px 0px -40px 0px",
-      }
-    );
-
+    if (perf.tier === "low") {
+      reveals.forEach((el) => el.classList.add("visible"));
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -30px 0px" });
     reveals.forEach((el) => observer.observe(el));
   }
 
@@ -289,9 +344,14 @@
         busy = true;
 
         const dest = link.getAttribute("data-href") || href;
+
+        if (perf.tier === "low") {
+          window.location.href = dest;
+          return;
+        }
+
         const name = (link.querySelector(".link-name") || {}).textContent || "Opening";
         const platform = platforms.find((p) => link.classList.contains(p)) || "default";
-
         iconEl.innerHTML = SEND_ICONS[platform] || "";
         labelEl.textContent = "Opening " + name.trim() + "...";
         overlay.className = "send-overlay show send--" + platform;
@@ -299,19 +359,22 @@
 
         setTimeout(() => {
           window.location.href = dest;
-        }, 1100);
+        }, SETTINGS.sendMs);
       }, true);
     });
   }
 
   // ---------- INIT ----------
   function init() {
-    resize();
-    initAmbient();
+    if (SETTINGS.particles) {
+      resize();
+      initAmbient();
+      requestAnimationFrame(animate);
+    }
     initReveal();
     initSendAnim();
-    requestAnimationFrame(animate);
-    setTimeout(startTypewriters, 400);
+    startTypewriters();
+    watchFpsAndDowngrade();
   }
 
   if (document.readyState === "loading") {
