@@ -62,7 +62,6 @@ body {
   width: 100%;
 }
 
-/* Top buttons (above profile photo) - pushed higher */
 .top-buttons {
   display: flex;
   flex-direction: column;
@@ -105,19 +104,11 @@ body {
   object-fit: cover;
 }
 
-.avatar-letter {
-  font-size: 2.8rem;
-  font-weight: 600;
-  color: var(--blue);
-  letter-spacing: -1px;
-}
-
 @keyframes pulseRing {
   0%, 100% { box-shadow: 0 0 30px var(--blue-glow); transform: scale(1); }
   50% { box-shadow: 0 0 50px rgba(0, 180, 255, 0.8); transform: scale(1.03); }
 }
 
-/* Name & Bio */
 .name {
   font-size: clamp(2rem, 6vw, 2.75rem);
   font-weight: 700;
@@ -138,7 +129,6 @@ body {
   min-height: 3.2em;
 }
 
-/* Typewriter cursor */
 .typing::after {
   content: "|";
   display: inline-block;
@@ -153,7 +143,6 @@ body {
   50% { opacity: 0; }
 }
 
-/* Scroll hint */
 .scroll-hint {
   display: flex;
   flex-direction: column;
@@ -206,7 +195,6 @@ body {
   max-width: 400px;
 }
 
-/* Link cards */
 .link-card {
   display: flex;
   align-items: center;
@@ -254,7 +242,6 @@ body {
   height: 24px;
 }
 
-/* ========== DK PLUS - Strong gold glow ========== */
 .dkplus {
   border: 1.5px solid #FFD700 !important;
   background: rgba(255, 215, 0, 0.08) !important;
@@ -294,7 +281,6 @@ body {
   color: white;
 }
 
-/* ========== MDC AI STUDIO ========== */
 .aistudio .link-icon {
   background: linear-gradient(135deg, #7c3aed, #a855f7, #06b6d4);
   color: white;
@@ -364,7 +350,6 @@ body {
   color: var(--blue);
 }
 
-/* ==================== FOOTER ==================== */
 .footer {
   text-align: center;
   padding: 2rem 1rem 3rem;
@@ -372,7 +357,6 @@ body {
   font-size: 0.8rem;
 }
 
-/* ==================== REVEAL ANIMATIONS ==================== */
 .reveal {
   opacity: 0;
   transform: translateY(28px);
@@ -385,14 +369,178 @@ body {
   transform: translateY(0);
 }
 
-/* ==================== MOBILE ==================== */
+/* ==================== SEND OVERLAY ==================== */
+.send-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.send-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.send-stage {
+  position: relative;
+  width: min(90vw, 360px);
+  height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.send-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 0 28px rgba(0, 180, 255, 0.35);
+}
+
+.send-icon svg {
+  width: 42px;
+  height: 42px;
+}
+
+.send-label {
+  margin-top: 1.25rem;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: #fff;
+  opacity: 0.9;
+}
+
+.send--telegram .send-icon {
+  background: #26A5E4;
+  animation: planeLaunch 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.send--instagram .send-icon {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.send--youtube .send-icon {
+  background: #FF0000;
+  animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.send--discord .send-icon,
+.send--dk .send-icon {
+  background: linear-gradient(135deg, #5865F2, #7289da);
+  animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.send--github .send-icon {
+  background: #24292e;
+  animation: spinFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.send--dkplus .send-icon {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #1a1a1a;
+  animation: starShoot 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.send--aistudio .send-icon {
+  background: linear-gradient(135deg, #7c3aed, #a855f7, #06b6d4);
+  animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.send--default .send-icon {
+  background: #00b4ff;
+  animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.send-overlay.show .send-label {
+  animation: fadeUp 0.9s ease forwards;
+}
+
+@keyframes planeLaunch {
+  0% {
+    transform: translate(0, 0) rotate(-18deg) scale(0.7);
+    opacity: 0;
+  }
+  18% {
+    transform: translate(0, 0) rotate(-8deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(42vw, -46vh) rotate(28deg) scale(0.35);
+    opacity: 0;
+  }
+}
+
+@keyframes popFly {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  22% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, -42vh) scale(0.4);
+    opacity: 0;
+  }
+}
+
+@keyframes spinFly {
+  0% {
+    transform: scale(0.5) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1) rotate(20deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(30vw, -40vh) rotate(280deg) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes starShoot {
+  0% {
+    transform: scale(0.3) rotate(-20deg);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1.1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, -44vh) rotate(40deg) scale(0.35);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(10px); }
+  25% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 @media (max-width: 480px) {
   .avatar-ring {
     width: 96px;
     height: 96px;
-  }
-  .avatar-letter {
-    font-size: 2.4rem;
   }
   .link-card {
     padding: 1rem 1.15rem;
@@ -402,7 +550,6 @@ body {
   }
 }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -414,5 +561,8 @@ body {
   }
   .typing::after {
     display: none;
+  }
+  .send-overlay {
+    display: none !important;
   }
 }
