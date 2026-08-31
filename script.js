@@ -277,35 +277,30 @@
     let busy = false;
 
     document.querySelectorAll("a.link-card").forEach((link) => {
+      const href = link.getAttribute("href");
+      link.setAttribute("data-href", href);
+      link.removeAttribute("target");
+      link.setAttribute("href", "#");
+
       link.addEventListener("click", (e) => {
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
         e.preventDefault();
+        e.stopPropagation();
         if (busy) return;
         busy = true;
 
-        const href = link.href;
+        const dest = link.getAttribute("data-href") || href;
         const name = (link.querySelector(".link-name") || {}).textContent || "Opening";
         const platform = platforms.find((p) => link.classList.contains(p)) || "default";
 
-        // Open tab during the user gesture so mobile browsers allow it
-        const win = window.open("about:blank", "_blank");
-
-        iconEl.innerHTML = SEND_ICONS[platform] || (link.querySelector(".link-icon") || {}).innerHTML || "";
+        iconEl.innerHTML = SEND_ICONS[platform] || "";
         labelEl.textContent = "Opening " + name.trim() + "...";
         overlay.className = "send-overlay show send--" + platform;
         overlay.setAttribute("aria-hidden", "false");
 
         setTimeout(() => {
-          if (win && !win.closed) {
-            win.location = href;
-          } else {
-            window.open(href, "_blank", "noopener");
-          }
-          overlay.classList.remove("show");
-          overlay.setAttribute("aria-hidden", "true");
-          busy = false;
-        }, 980);
-      });
+          window.location.href = dest;
+        }, 1100);
+      }, true);
     });
   }
 
