@@ -6,22 +6,30 @@
 (() => {
   "use strict";
 
-  // ---------- PERFORMANCE TIER ----------
-  // high | mid | low  — decided locally, never uploaded
+  const FORCE_KEY = "mdc-force-high";
+  const DISMISS_KEY = "mdc-perf-dismissed";
+  const forceHigh = localStorage.getItem(FORCE_KEY) === "1";
+
   const perf = detectPerformance();
+  if (forceHigh) {
+    perf.tier = "high";
+    perf.locked = true;
+  }
+
   document.documentElement.setAttribute("data-perf", perf.tier);
   document.documentElement.classList.add("perf-" + perf.tier);
 
-  const SETTINGS = {
+  const PRESETS = {
     high: { dprMax: 2, maxParticles: 120, spawn: 3, ambient: 25, typeName: 120, typeBio: 45, sendMs: 1100, particles: true, pointerGlow: true },
     mid:  { dprMax: 1, maxParticles: 40,  spawn: 1, ambient: 8,  typeName: 70,  typeBio: 25, sendMs: 650,  particles: true, pointerGlow: false },
     low:  { dprMax: 1, maxParticles: 0,   spawn: 0, ambient: 0,  typeName: 0,   typeBio: 0,  sendMs: 220,  particles: false, pointerGlow: false }
-  }[perf.tier];
+  };
+  const SETTINGS = Object.assign({}, PRESETS[perf.tier]);
 
   function detectPerformance() {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const cores = navigator.hardwareConcurrency || 4;
-    const ram = navigator.deviceMemory || 4; // GB, Chrome/Android mostly
+    const ram = navigator.deviceMemory || 4;
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const saveData = !!(conn && conn.saveData);
     const slowNet = !!(conn && /2g|slow-2g/.test(conn.effectiveType || ""));
@@ -37,22 +45,58 @@
     else if (cores <= 4) score -= 1;
     if (ram <= 2) score -= 3;
     else if (ram <= 4) score -= 1;
-    if (dpr >= 3 && lowEndHint) score -= 1; // heavy pixels on weak GPU
+    if (dpr >= 3 && lowEndHint) score -= 1;
     if (small && lowEndHint) score -= 1;
 
     let tier = "high";
     if (score <= 3) tier = "low";
     else if (score <= 6) tier = "mid";
 
-    return { tier, score, reduced, cores, ram };
+    return { tier, score, reduced, cores, ram, locked: false };
   }
 
-  // Runtime FPS watchdog — if the page stutters, drop a tier
+  function showPerfBanner() {
+    const banner = document.getElementById("perf-banner");
+    if (!banner) return;
+    if (sessionStorage.getItem(DISMISS_KEY) === "1") return;
+    banner.classList.add("show");
+    banner.removeAttribute("hidden");
+  }
+
+  function hidePerfBanner() {
+    const banner = document.getElementById("perf-banner");
+    if (!banner) return;
+    banner.classList.remove("show");
+  }
+
+  function initPerfBanner() {
+    const keepBtn = document.getElementById("perf-keep");
+    const okBtn = document.getElementById("perf-ok");
+    if (keepBtn) {
+      keepBtn.addEventListener("click", () => {
+        localStorage.setItem(FORCE_KEY, "1");
+        sessionStorage.removeItem(DISMISS_KEY);
+        location.reload();
+      });
+    }
+    if (okBtn) {
+      okBtn.addEventListener("click", () => {
+        localStorage.removeItem(FORCE_KEY);
+        sessionStorage.setItem(DISMISS_KEY, "1");
+        hidePerfBanner();
+      });
+    }
+    if (!perf.locked && perf.tier !== "high") {
+      setTimeout(showPerfBanner, 700);
+    }
+  }
+
   function watchFpsAndDowngrade() {
-    if (perf.tier === "low") return;
+    if (perf.locked || perf.tier === "low") return;
     let frames = 0;
     let last = performance.now();
     function tick(now) {
+      if (perf.locked) return;
       frames++;
       if (now - last >= 1500) {
         const fps = (frames * 1000) / (now - last);
@@ -71,14 +115,13 @@
   }
 
   function applyDowngrade(tier) {
+    if (perf.locked) return;
     perf.tier = tier;
     document.documentElement.setAttribute("data-perf", tier);
     document.documentElement.classList.remove("perf-high", "perf-mid", "perf-low");
     document.documentElement.classList.add("perf-" + tier);
+    Object.assign(SETTINGS, PRESETS[tier]);
     if (tier === "low") {
-      SETTINGS.particles = false;
-      SETTINGS.pointerGlow = false;
-      SETTINGS.sendMs = 220;
       particles.length = 0;
       if (canvas) {
         const c = canvas.getContext("2d");
@@ -86,16 +129,11 @@
         canvas.style.display = "none";
       }
     } else if (tier === "mid") {
-      SETTINGS.maxParticles = 40;
-      SETTINGS.spawn = 1;
-      SETTINGS.ambient = 8;
-      SETTINGS.pointerGlow = false;
-      SETTINGS.sendMs = 650;
-      while (particles.length > 40) particles.pop();
+      while (particles.length > SETTINGS.maxParticles) particles.pop();
     }
+    showPerfBanner();
   }
 
-  // ---------- CANVAS & PARTICLES ----------
   const canvas = document.getElementById("particles");
   const ctx = canvas ? canvas.getContext("2d", { alpha: true }) : null;
 
@@ -118,23 +156,16 @@
       this.x = x;
       this.y = y;
       this.isAmbient = isAmbient;
-
       const angle = Math.random() * Math.PI * 2;
-      const speed = isAmbient
-        ? 0.15 + Math.random() * 0.35
-        : 0.8 + Math.random() * 2.2;
-
+      const speed = isAmbient ? 0.15 + Math.random() * 0.35 : 0.8 + Math.random() * 2.2;
       this.vx = Math.cos(angle) * speed;
       this.vy = Math.sin(angle) * speed;
       this.size = isAmbient ? 1 + Math.random() * 1.8 : 2 + Math.random() * 3.5;
       this.life = 1;
-      this.decay = isAmbient
-        ? 0.0008 + Math.random() * 0.0015
-        : 0.012 + Math.random() * 0.018;
+      this.decay = isAmbient ? 0.0008 + Math.random() * 0.0015 : 0.012 + Math.random() * 0.018;
       this.color = COLORS[(Math.random() * COLORS.length) | 0];
       this.alpha = isAmbient ? 0.25 + Math.random() * 0.35 : 0.7 + Math.random() * 0.3;
     }
-
     update() {
       this.x += this.vx;
       this.y += this.vy;
@@ -147,7 +178,6 @@
         this.life -= this.decay;
       }
     }
-
     resetAmbient() {
       this.x = Math.random() * width;
       this.y = Math.random() * height;
@@ -157,7 +187,6 @@
       this.size = 1 + Math.random() * 1.8;
       this.alpha = 0.25 + Math.random() * 0.35;
     }
-
     draw() {
       if (this.life <= 0 || !ctx) return;
       const a = this.alpha * this.life;
@@ -205,20 +234,17 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  let rafId = 0;
   function animate() {
     if (!SETTINGS.particles || !ctx) return;
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
     ctx.fillRect(0, 0, width, height);
-
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.update();
       p.draw();
       if (!p.isAmbient && p.life <= 0) particles.splice(i, 1);
     }
-
     if (SETTINGS.pointerGlow && pointer.active) {
       const gradient = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, 80);
       gradient.addColorStop(0, "rgba(0, 180, 255, 0.12)");
@@ -227,8 +253,7 @@
       ctx.fillStyle = gradient;
       ctx.fillRect(pointer.x - 80, pointer.y - 80, 160, 160);
     }
-
-    rafId = requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
   }
 
   function onPointerMove(x, y) {
@@ -253,7 +278,6 @@
     canvas.style.display = "none";
   }
 
-  // ---------- TYPEWRITER ----------
   function typeWriter(element, text, speed, callback) {
     if (!speed) {
       element.innerHTML = text.replace(/\n/g, "<br>");
@@ -282,7 +306,6 @@
     const nameEl = document.getElementById("type-name");
     const bioEl = document.getElementById("type-bio");
     const hint = document.querySelector(".scroll-hint");
-
     typeWriter(nameEl, "MDC", SETTINGS.typeName, () => {
       setTimeout(() => {
         typeWriter(bioEl, "Hello 👋\nAll my social accounts and contact channels are here.", SETTINGS.typeBio, () => {
@@ -292,7 +315,6 @@
     });
   }
 
-  // ---------- SCROLL REVEAL ----------
   function initReveal() {
     const reveals = document.querySelectorAll(".reveal");
     if (perf.tier === "low") {
@@ -310,7 +332,6 @@
     reveals.forEach((el) => observer.observe(el));
   }
 
-  // ---------- SEND / LAUNCH ANIMATION ----------
   const SEND_ICONS = {
     telegram: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>',
     instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
@@ -327,44 +348,34 @@
     const iconEl = document.getElementById("send-icon");
     const labelEl = document.getElementById("send-label");
     if (!overlay || !iconEl || !labelEl) return;
-
     const platforms = ["telegram", "instagram", "youtube", "discord", "github", "dk", "dkplus", "aistudio"];
     let busy = false;
-
     document.querySelectorAll("a.link-card").forEach((link) => {
       const href = link.getAttribute("href");
       link.setAttribute("data-href", href);
       link.removeAttribute("target");
       link.setAttribute("href", "#");
-
       link.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (busy) return;
         busy = true;
-
         const dest = link.getAttribute("data-href") || href;
-
         if (perf.tier === "low") {
           window.location.href = dest;
           return;
         }
-
         const name = (link.querySelector(".link-name") || {}).textContent || "Opening";
         const platform = platforms.find((p) => link.classList.contains(p)) || "default";
         iconEl.innerHTML = SEND_ICONS[platform] || "";
         labelEl.textContent = "Opening " + name.trim() + "...";
         overlay.className = "send-overlay show send--" + platform;
         overlay.setAttribute("aria-hidden", "false");
-
-        setTimeout(() => {
-          window.location.href = dest;
-        }, SETTINGS.sendMs);
+        setTimeout(() => { window.location.href = dest; }, SETTINGS.sendMs);
       }, true);
     });
   }
 
-  // ---------- INIT ----------
   function init() {
     if (SETTINGS.particles) {
       resize();
@@ -373,6 +384,7 @@
     }
     initReveal();
     initSendAnim();
+    initPerfBanner();
     startTypewriters();
     watchFpsAndDowngrade();
   }
