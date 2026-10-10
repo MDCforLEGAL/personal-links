@@ -174,7 +174,6 @@ body {
   max-width: 400px;
 }
 
-/* No backdrop-filter: blur is a major FPS killer on older phones */
 .link-card {
   display: flex;
   align-items: center;
@@ -242,7 +241,9 @@ body {
   50% { box-shadow: 0 0 18px rgba(255, 215, 0, 0.5); }
 }
 
-.dk .link-icon {
+.dk .link-icon,
+.discord .link-icon,
+.mydcbot .link-icon {
   background: linear-gradient(135deg, #5865F2, #7289da);
   color: white;
 }
@@ -268,11 +269,6 @@ body {
 
 .telegram .link-icon {
   background: #26A5E4;
-  color: white;
-}
-
-.discord .link-icon {
-  background: #5865F2;
   color: white;
 }
 
@@ -356,18 +352,21 @@ body {
 }
 
 .send-icon {
-  width: 84px;
-  height: 84px;
-  border-radius: 22px;
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
+  position: relative;
+  overflow: hidden;
 }
 
 .send-icon svg {
-  width: 42px;
-  height: 42px;
+  width: 52px;
+  height: 52px;
+  z-index: 1;
 }
 
 .send-label {
@@ -378,42 +377,52 @@ body {
   opacity: 0.9;
 }
 
-.send--telegram .send-icon { background: #26A5E4; animation: planeLaunch 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.send--instagram .send-icon { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.send--youtube .send-icon { background: #FF0000; animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.send--telegram .send-icon { background: #26A5E4; animation: planeLaunch 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.send--instagram .send-icon { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); animation: cameraFlash 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.send--youtube .send-icon { background: #FF0000; animation: popFly 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 .send--discord .send-icon,
-.send--dk .send-icon { background: linear-gradient(135deg, #5865F2, #7289da); animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.send--github .send-icon { background: #24292e; animation: spinFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.send--dkplus .send-icon { background: linear-gradient(135deg, #FFD700, #FFA500); color: #1a1a1a; animation: starShoot 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.send--aistudio .send-icon { background: linear-gradient(135deg, #7c3aed, #a855f7, #06b6d4); animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.send--default .send-icon { background: #00b4ff; animation: popFly 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.send--dk .send-icon,
+.send--mydcbot .send-icon { background: linear-gradient(135deg, #5865F2, #7289da); animation: popFly 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.send--github .send-icon { background: #24292e; animation: spinFly 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.send--dkplus .send-icon { background: linear-gradient(135deg, #FFD700, #FFA500); color: #1a1a1a; animation: starShoot 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.send--aistudio .send-icon { background: linear-gradient(135deg, #7c3aed, #a855f7, #06b6d4); animation: popFly 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.send--default .send-icon { background: #00b4ff; animation: popFly 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 .send-overlay.show .send-label {
   animation: fadeUp 0.9s ease forwards;
 }
 
 @keyframes planeLaunch {
-  0% { transform: translate(0, 0) rotate(-18deg) scale(0.7); opacity: 0; }
-  18% { transform: translate(0, 0) rotate(-8deg) scale(1); opacity: 1; }
-  100% { transform: translate(42vw, -46vh) rotate(28deg) scale(0.35); opacity: 0; }
+  0% { transform: translate(0, 0) rotate(-18deg) scale(0.6); opacity: 0; }
+  18% { transform: translate(0, 0) rotate(-8deg) scale(1.05); opacity: 1; }
+  100% { transform: translate(42vw, -46vh) rotate(28deg) scale(0.3); opacity: 0; }
+}
+
+@keyframes cameraFlash {
+  0% { transform: scale(0.4); opacity: 0; }
+  20% { transform: scale(1.1); opacity: 1; }
+  30% { filter: brightness(1); }
+  35% { filter: brightness(12); background: #fff; }
+  42% { filter: brightness(1); background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+  100% { transform: translate(0, -42vh) scale(0.35); opacity: 0; filter: brightness(1); }
 }
 
 @keyframes popFly {
   0% { transform: scale(0.4); opacity: 0; }
-  22% { transform: scale(1.08); opacity: 1; }
-  100% { transform: translate(0, -42vh) scale(0.4); opacity: 0; }
+  22% { transform: scale(1.1); opacity: 1; }
+  100% { transform: translate(0, -42vh) scale(0.35); opacity: 0; }
 }
 
 @keyframes spinFly {
   0% { transform: scale(0.5) rotate(0deg); opacity: 0; }
-  20% { transform: scale(1) rotate(20deg); opacity: 1; }
-  100% { transform: translate(30vw, -40vh) rotate(280deg) scale(0.3); opacity: 0; }
+  20% { transform: scale(1.05) rotate(15deg); opacity: 1; }
+  100% { transform: translate(30vw, -40vh) rotate(300deg) scale(0.25); opacity: 0; }
 }
 
 @keyframes starShoot {
   0% { transform: scale(0.3) rotate(-20deg); opacity: 0; }
-  20% { transform: scale(1.1) rotate(0deg); opacity: 1; }
-  100% { transform: translate(0, -44vh) rotate(40deg) scale(0.35); opacity: 0; }
+  20% { transform: scale(1.15) rotate(0deg); opacity: 1; }
+  100% { transform: translate(0, -44vh) rotate(45deg) scale(0.3); opacity: 0; }
 }
 
 @keyframes fadeUp {
@@ -427,6 +436,8 @@ body {
   .avatar-ring { width: 96px; height: 96px; }
   .link-card { padding: 1rem 1.15rem; }
   .hero { padding-top: 1rem; }
+  .send-icon { width: 84px; height: 84px; }
+  .send-icon svg { width: 46px; height: 46px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
