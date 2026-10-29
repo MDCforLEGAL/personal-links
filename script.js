@@ -143,6 +143,7 @@
 
   const particles = [];
   let pointer = { x: -9999, y: -9999, active: false };
+  let animating = false;
 
   const COLORS = [
     "rgba(0, 180, 255,",
@@ -205,6 +206,7 @@
 
   function initAmbient() {
     if (!SETTINGS.particles) return;
+    particles.length = 0;
     for (let i = 0; i < SETTINGS.ambient; i++) {
       particles.push(new Particle(Math.random() * width, Math.random() * height, true));
     }
@@ -235,7 +237,11 @@
   }
 
   function animate() {
-    if (!SETTINGS.particles || !ctx) return;
+    if (!SETTINGS.particles || !ctx) {
+      animating = false;
+      return;
+    }
+    animating = true;
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
     ctx.fillRect(0, 0, width, height);
@@ -253,6 +259,13 @@
       ctx.fillStyle = gradient;
       ctx.fillRect(pointer.x - 80, pointer.y - 80, 160, 160);
     }
+    requestAnimationFrame(animate);
+  }
+
+  function startParticles() {
+    if (!SETTINGS.particles || animating) return;
+    resize();
+    initAmbient();
     requestAnimationFrame(animate);
   }
 
@@ -344,13 +357,23 @@
   };
   SEND_ICONS.dk = SEND_ICONS.discord;
 
+  let busy = false;
+
+  function resetSendOverlay() {
+    const overlay = document.getElementById("send-overlay");
+    if (overlay) {
+      overlay.className = "send-overlay";
+      overlay.setAttribute("aria-hidden", "true");
+    }
+    busy = false;
+  }
+
   function initSendAnim() {
     const overlay = document.getElementById("send-overlay");
     const iconEl = document.getElementById("send-icon");
     const labelEl = document.getElementById("send-label");
     if (!overlay || !iconEl || !labelEl) return;
     const platforms = ["telegram", "instagram", "youtube", "discord", "github", "dk", "dkplus", "aistudio", "mydcbot"];
-    let busy = false;
     document.querySelectorAll("a.link-card").forEach((link) => {
       const href = link.getAttribute("href");
       link.setAttribute("data-href", href);
@@ -377,17 +400,31 @@
     });
   }
 
+  // Fix black screen when returning via browser back button (bfcache)
+  function setupPageRestore() {
+    window.addEventListener("pageshow", (e) => {
+      resetSendOverlay();
+      if (e.persisted) {
+        // Restored from bfcache — restart particles if needed
+        animating = false;
+        startParticles();
+      }
+    });
+    // Also clean up when page is hidden (before leaving)
+    window.addEventListener("pagehide", () => {
+      resetSendOverlay();
+    });
+  }
+
   function init() {
-    if (SETTINGS.particles) {
-      resize();
-      initAmbient();
-      requestAnimationFrame(animate);
-    }
+    resetSendOverlay();
+    startParticles();
     initReveal();
     initSendAnim();
     initPerfBanner();
     startTypewriters();
     watchFpsAndDowngrade();
+    setupPageRestore();
   }
 
   if (document.readyState === "loading") {
