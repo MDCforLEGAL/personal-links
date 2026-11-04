@@ -40,11 +40,17 @@ body {
   pointer-events: none;
 }
 
-.music-btn {
+.top-left-controls {
   position: fixed;
   top: 16px;
   left: 16px;
   z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.music-btn {
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -57,6 +63,7 @@ body {
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(29, 185, 84, 0.45);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
 }
 
 .music-btn:hover {
@@ -67,6 +74,59 @@ body {
 .music-btn svg {
   width: 24px;
   height: 24px;
+}
+
+.playlist-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  padding: 6px 12px 6px 8px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.playlist-label .arrow {
+  color: #1db954;
+  font-size: 1.1rem;
+  animation: pointRight 1.4s ease-in-out infinite;
+}
+
+@keyframes pointRight {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+}
+
+.mute-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 40;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.mute-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.mute-btn svg {
+  width: 22px;
+  height: 22px;
 }
 
 .music-modal {
@@ -490,7 +550,9 @@ body {
   .hero { padding-top: 1rem; }
   .send-icon { width: 84px; height: 84px; }
   .send-icon svg { width: 46px; height: 46px; }
-  .music-btn { top: 12px; left: 12px; width: 44px; height: 44px; }
+  .top-left-controls { top: 12px; left: 12px; }
+  .music-btn, .mute-btn { width: 44px; height: 44px; }
+  .playlist-label { font-size: 0.7rem; padding: 5px 10px 5px 6px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
