@@ -6,11 +6,22 @@
   <meta name="theme-color" content="#000000" />
   <meta name="description" content="Personal link page - Instagram, YouTube, Telegram, Discord, GitHub, MDC AI Studio, Roblox Scripts" />
   <title>MDC</title>
-  <link rel="stylesheet" href="style.css?v=7" />
-  <link rel="stylesheet" href="perf.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="perf.css?v=8" />
 </head>
 <body>
   <canvas id="particles"></canvas>
+
+  <button id="music-btn" class="music-btn" aria-label="Open music player">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+  </button>
+
+  <div id="music-modal" class="music-modal" aria-hidden="true">
+    <div class="music-modal-inner">
+      <button id="music-close" class="music-close" aria-label="Close">&times;</button>
+      <iframe src="https://open.spotify.com/embed/playlist/1vm0cYM9sK6lf5eLWtyLj6?utm_source=generator&theme=0" width="100%" height="352" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+    </div>
+  </div>
 
   <div class="content">
     <section class="hero" id="hero">
@@ -103,6 +114,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=7"></script>
+  <script src="script.js?v=8"></script>
 </body>
 </html>
