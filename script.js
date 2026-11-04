@@ -152,6 +152,12 @@
     "rgba(0, 220, 255,",
   ];
 
+  // Audio reactive state
+  let audioContext = null;
+  let analyser = null;
+  let dataArray = null;
+  let audioLevel = 0;
+
   class Particle {
     constructor(x, y, isAmbient = false) {
       this.x = x;
@@ -161,7 +167,8 @@
       const speed = isAmbient ? 0.15 + Math.random() * 0.35 : 0.8 + Math.random() * 2.2;
       this.vx = Math.cos(angle) * speed;
       this.vy = Math.sin(angle) * speed;
-      this.size = isAmbient ? 1 + Math.random() * 1.8 : 2 + Math.random() * 3.5;
+      this.baseSize = isAmbient ? 1 + Math.random() * 1.8 : 2 + Math.random() * 3.5;
+      this.size = this.baseSize;
       this.life = 1;
       this.decay = isAmbient ? 0.0008 + Math.random() * 0.0015 : 0.012 + Math.random() * 0.018;
       this.color = COLORS[(Math.random() * COLORS.length) | 0];
@@ -172,6 +179,8 @@
       this.y += this.vy;
       this.vx *= 0.985;
       this.vy *= 0.985;
+      // React to music: bigger on louder
+      this.size = this.baseSize * (1 + audioLevel * 0.8);
       if (this.isAmbient) {
         this.life -= this.decay;
         if (this.life <= 0) this.resetAmbient();
@@ -185,7 +194,8 @@
       this.life = 1;
       this.vx = (Math.random() - 0.5) * 0.6;
       this.vy = (Math.random() - 0.5) * 0.6;
-      this.size = 1 + Math.random() * 1.8;
+      this.baseSize = 1 + Math.random() * 1.8;
+      this.size = this.baseSize;
       this.alpha = 0.25 + Math.random() * 0.35;
     }
     draw() {
@@ -197,8 +207,8 @@
       ctx.fill();
       if (SETTINGS.pointerGlow && this.size > 2.2 && a > 0.3) {
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2);
-        ctx.fillStyle = this.color + (a * 0.18) + ")";
+        ctx.arc(this.x, this.y, this.size * (2.2 + audioLevel), 0, Math.PI * 2);
+        ctx.fillStyle = this.color + (a * (0.18 + audioLevel * 0.2)) + ")";
         ctx.fill();
       }
     }
@@ -242,23 +252,43 @@
       return;
     }
     animating = true;
+
+    // Update audio level
+    if (analyser && dataArray) {
+      analyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+      audioLevel = Math.min(1, (sum / dataArray.length) / 128);
+    } else {
+      audioLevel *= 0.9;
+    }
+
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
     ctx.fillRect(0, 0, width, height);
+
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.update();
       p.draw();
       if (!p.isAmbient && p.life <= 0) particles.splice(i, 1);
     }
+
     if (SETTINGS.pointerGlow && pointer.active) {
-      const gradient = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, 80);
-      gradient.addColorStop(0, "rgba(0, 180, 255, 0.12)");
+      const glowSize = 80 + audioLevel * 40;
+      const gradient = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, glowSize);
+      gradient.addColorStop(0, "rgba(0, 180, 255, " + (0.12 + audioLevel * 0.15) + ")");
       gradient.addColorStop(0.5, "rgba(0, 140, 255, 0.04)");
       gradient.addColorStop(1, "rgba(0, 100, 255, 0)");
       ctx.fillStyle = gradient;
-      ctx.fillRect(pointer.x - 80, pointer.y - 80, 160, 160);
+      ctx.fillRect(pointer.x - glowSize, pointer.y - glowSize, glowSize * 2, glowSize * 2);
     }
+
+    // Extra ambient spawn on strong beats
+    if (audioLevel > 0.45 && Math.random() < 0.15 && SETTINGS.particles) {
+      spawnParticles(Math.random() * width, Math.random() * height, 1);
+    }
+
     requestAnimationFrame(animate);
   }
 
@@ -425,6 +455,57 @@
     });
   }
 
+  function initBackgroundMusic() {
+    const audio = document.getElementById("bg-music");
+    const muteBtn = document.getElementById("mute-btn");
+    const muteIcon = document.getElementById("mute-icon");
+    if (!audio) return;
+
+    const mutePath = '<path d="M16.5 12c0-1.77-1-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+    const unmutePath = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05c1.5-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+
+    function updateMuteIcon() {
+      if (!muteIcon) return;
+      muteIcon.innerHTML = audio.muted ? mutePath : unmutePath;
+    }
+
+    function startAudio() {
+      if (audio.paused) {
+        audio.play().catch(() => {});
+      }
+      if (!audioContext && window.AudioContext) {
+        try {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const source = audioContext.createMediaElementSource(audio);
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 64;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+          source.connect(analyser);
+          analyser.connect(audioContext.destination);
+        } catch (e) {}
+      }
+    }
+
+    // Start on first interaction
+    const startOnce = () => {
+      startAudio();
+      document.removeEventListener("click", startOnce);
+      document.removeEventListener("touchstart", startOnce);
+    };
+    document.addEventListener("click", startOnce);
+    document.addEventListener("touchstart", startOnce, { passive: true });
+
+    if (muteBtn) {
+      muteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        audio.muted = !audio.muted;
+        updateMuteIcon();
+        if (!audio.muted) startAudio();
+      });
+    }
+    updateMuteIcon();
+  }
+
   // Fix black screen when returning via browser back button (bfcache)
   function setupPageRestore() {
     window.addEventListener("pageshow", (e) => {
@@ -450,6 +531,7 @@
     initReveal();
     initSendAnim();
     initMusicPlayer();
+    initBackgroundMusic();
     initPerfBanner();
     startTypewriters();
     watchFpsAndDowngrade();
