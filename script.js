@@ -402,6 +402,29 @@
     });
   }
 
+  function initMusicPlayer() {
+    const btn = document.getElementById("music-btn");
+    const modal = document.getElementById("music-modal");
+    const closeBtn = document.getElementById("music-close");
+    if (!btn || !modal) return;
+
+    function openModal() {
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeModal() {
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    btn.addEventListener("click", openModal);
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+  }
+
   // Fix black screen when returning via browser back button (bfcache)
   function setupPageRestore() {
     window.addEventListener("pageshow", (e) => {
@@ -414,7 +437,6 @@
     window.addEventListener("pagehide", () => {
       resetSendOverlay();
     });
-    // Extra safety: also listen for visibility change
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         resetSendOverlay();
@@ -427,6 +449,7 @@
     startParticles();
     initReveal();
     initSendAnim();
+    initMusicPlayer();
     initPerfBanner();
     startTypewriters();
     watchFpsAndDowngrade();
