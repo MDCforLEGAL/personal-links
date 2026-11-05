@@ -246,6 +246,61 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+
+  let avatarViz = null;
+  let avatarVizCtx = null;
+
+  function initAvatarViz() {
+    avatarViz = document.getElementById("avatar-viz");
+    if (!avatarViz) return;
+    avatarVizCtx = avatarViz.getContext("2d");
+    // Size it properly
+    const size = 180;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    avatarViz.width = size * dpr;
+    avatarViz.height = size * dpr;
+    avatarViz.style.width = size + "px";
+    avatarViz.style.height = size + "px";
+    avatarVizCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function drawAvatarViz() {
+    if (!avatarVizCtx || !analyser || !dataArray) return;
+    const ctx = avatarVizCtx;
+    const w = 180;
+    const h = 180;
+    const cx = w / 2;
+    const cy = h / 2;
+    const innerR = 58; // just outside avatar
+    const maxBar = 28;
+
+    ctx.clearRect(0, 0, w, h);
+    analyser.getByteFrequencyData(dataArray);
+
+    const bars = 48;
+    const step = Math.floor(dataArray.length / bars) || 1;
+
+    for (let i = 0; i < bars; i++) {
+      const val = dataArray[i * step] || 0;
+      const amp = val / 255;
+      const barLen = amp * maxBar * (0.4 + audioLevel * 0.8);
+      const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
+
+      const x1 = cx + Math.cos(angle) * innerR;
+      const y1 = cy + Math.sin(angle) * innerR;
+      const x2 = cx + Math.cos(angle) * (innerR + barLen);
+      const y2 = cy + Math.sin(angle) * (innerR + barLen);
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = `rgba(0, 180, 255, ${0.35 + amp * 0.65})`;
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
+  }
+
   function animate() {
     if (!SETTINGS.particles || !ctx) {
       animating = false;
@@ -289,6 +344,7 @@
       spawnParticles(Math.random() * width, Math.random() * height, 1);
     }
 
+    drawAvatarViz();
     requestAnimationFrame(animate);
   }
 
@@ -296,6 +352,7 @@
     if (!SETTINGS.particles || animating) return;
     resize();
     initAmbient();
+    drawAvatarViz();
     requestAnimationFrame(animate);
   }
 
@@ -307,15 +364,6 @@
   }
 
   if (SETTINGS.particles) {
-    window.addEventListener("mousemove", (e) => onPointerMove(e.clientX, e.clientY), { passive: true });
-    window.addEventListener("mouseleave", () => { pointer.active = false; });
-    window.addEventListener("touchmove", (e) => {
-      if (e.touches.length > 0) onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
-    }, { passive: true });
-    window.addEventListener("touchstart", (e) => {
-      if (e.touches.length > 0) onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
-    }, { passive: true });
-    window.addEventListener("touchend", () => { pointer.active = false; });
     window.addEventListener("resize", resize, { passive: true });
   } else if (canvas) {
     canvas.style.display = "none";
@@ -540,6 +588,7 @@
       if (e.persisted) {
         animating = false;
         startParticles();
+    initAvatarViz();
       }
     });
     window.addEventListener("pagehide", () => {
@@ -555,6 +604,7 @@
   function init() {
     resetSendOverlay();
     startParticles();
+    initAvatarViz();
     initReveal();
     initSendAnim();
     initMusicPlayer();
