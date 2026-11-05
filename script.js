@@ -255,7 +255,7 @@
     if (!avatarViz) return;
     avatarVizCtx = avatarViz.getContext("2d");
     // Size it properly
-    const size = 180;
+    const size = 220;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     avatarViz.width = size * dpr;
     avatarViz.height = size * dpr;
@@ -267,96 +267,47 @@
   function drawAvatarViz() {
     if (!avatarVizCtx || !analyser || !dataArray) return;
     const ctx = avatarVizCtx;
-    const w = 180;
-    const h = 180;
+    const w = 220;
+    const h = 220;
     const cx = w / 2;
     const cy = h / 2;
+    const innerR = 58; // clear of avatar
+    const maxLen = 48;
 
     ctx.clearRect(0, 0, w, h);
     analyser.getByteFrequencyData(dataArray);
 
-    const bins = dataArray.length;
-    // Split: low = bass (0-20%), mid+high = rest
-    const bassEnd = Math.floor(bins * 0.18);
-    const midEnd = Math.floor(bins * 0.55);
+    const bars = 64;
+    const step = Math.max(1, Math.floor(dataArray.length / bars));
 
-    // --- OUTER: aggressive bass, filled ---
-    const outerPoints = 64;
-    const outerAmps = [];
-    for (let i = 0; i < outerPoints; i++) {
-      const start = Math.floor((i / outerPoints) * bassEnd);
-      const end = Math.floor(((i + 1) / outerPoints) * bassEnd);
-      let sum = 0, count = 0;
-      for (let j = start; j < end && j < bins; j++) { sum += dataArray[j]; count++; }
-      outerAmps.push(count ? (sum / count) / 255 : 0);
-    }
-    // Smooth
-    const oSmooth = outerAmps.slice();
-    for (let i = 0; i < outerPoints; i++) {
-      const p = outerAmps[(i - 1 + outerPoints) % outerPoints];
-      const n = outerAmps[(i + 1) % outerPoints];
-      oSmooth[i] = p * 0.2 + outerAmps[i] * 0.6 + n * 0.2;
-    }
+    // Bass-heavy weighting for more aggressive response
+    for (let i = 0; i < bars; i++) {
+      let sum = 0;
+      const start = i * step;
+      for (let j = 0; j < step && start + j < dataArray.length; j++) {
+        const v = dataArray[start + j];
+        const weight = (start + j) < dataArray.length * 0.25 ? 1.6 : 1.0; // boost bass
+        sum += v * weight;
+      }
+      const amp = Math.min(1, (sum / step) / 180); // higher sensitivity
 
-    const baseOuter = 68;
-    const maxOuter = 22;
-    ctx.beginPath();
-    for (let i = 0; i <= outerPoints; i++) {
-      const idx = i % outerPoints;
-      const r = baseOuter + oSmooth[idx] * maxOuter * (1.1 + audioLevel * 0.6);
-      const angle = (idx / outerPoints) * Math.PI * 2 - Math.PI / 2;
-      const x = cx + Math.cos(angle) * r;
-      const y = cy + Math.sin(angle) * r;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    const outerGrad = ctx.createRadialGradient(cx, cy, 40, cx, cy, 100);
-    outerGrad.addColorStop(0, "rgba(0, 200, 255, 0.35)");
-    outerGrad.addColorStop(0.6, "rgba(0, 160, 255, 0.55)");
-    outerGrad.addColorStop(1, "rgba(80, 220, 255, 0.15)");
-    ctx.fillStyle = outerGrad;
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0, 220, 255, 0.9)";
-    ctx.lineWidth = 2.2;
-    ctx.stroke();
+      const barLen = amp * maxLen;
+      const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
 
-    // --- INNER: music focused (mid/high), filled smaller ---
-    const innerPoints = 48;
-    const innerAmps = [];
-    for (let i = 0; i < innerPoints; i++) {
-      const start = bassEnd + Math.floor((i / innerPoints) * (midEnd - bassEnd));
-      const end = bassEnd + Math.floor(((i + 1) / innerPoints) * (midEnd - bassEnd));
-      let sum = 0, count = 0;
-      for (let j = start; j < end && j < bins; j++) { sum += dataArray[j]; count++; }
-      innerAmps.push(count ? (sum / count) / 255 : 0);
-    }
-    const iSmooth = innerAmps.slice();
-    for (let i = 0; i < innerPoints; i++) {
-      const p = innerAmps[(i - 1 + innerPoints) % innerPoints];
-      const n = innerAmps[(i + 1) % innerPoints];
-      iSmooth[i] = p * 0.25 + innerAmps[i] * 0.5 + n * 0.25;
-    }
+      const x1 = cx + Math.cos(angle) * innerR;
+      const y1 = cy + Math.sin(angle) * innerR;
+      const x2 = cx + Math.cos(angle) * (innerR + barLen);
+      const y2 = cy + Math.sin(angle) * (innerR + barLen);
 
-    const baseInner = 42;
-    const maxInner = 14;
-    ctx.beginPath();
-    for (let i = 0; i <= innerPoints; i++) {
-      const idx = i % innerPoints;
-      const r = baseInner + iSmooth[idx] * maxInner * (0.9 + audioLevel * 0.4);
-      const angle = (idx / innerPoints) * Math.PI * 2 - Math.PI / 2;
-      const x = cx + Math.cos(angle) * r;
-      const y = cy + Math.sin(angle) * r;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      const alpha = 0.45 + amp * 0.55;
+      ctx.strokeStyle = `rgba(0, ${200 + amp * 55}, 255, ${alpha})`;
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = "round";
+      ctx.stroke();
     }
-    ctx.closePath();
-    const innerGrad = ctx.createRadialGradient(cx, cy, 20, cx, cy, 55);
-    innerGrad.addColorStop(0, "rgba(0, 255, 255, 0.45)");
-    innerGrad.addColorStop(1, "rgba(0, 140, 255, 0.25)");
-    ctx.fillStyle = innerGrad;
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0, 255, 255, 0.95)";
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
   }
 
   function animate() {
