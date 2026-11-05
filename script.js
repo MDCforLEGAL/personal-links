@@ -271,34 +271,63 @@
     const h = 180;
     const cx = w / 2;
     const cy = h / 2;
-    const innerR = 58; // just outside avatar
-    const maxBar = 28;
+    const baseR = 62;
+    const maxAmp = 18;
 
     ctx.clearRect(0, 0, w, h);
     analyser.getByteFrequencyData(dataArray);
 
-    const bars = 48;
-    const step = Math.floor(dataArray.length / bars) || 1;
+    const points = 96;
+    const step = Math.max(1, Math.floor(dataArray.length / points));
 
-    for (let i = 0; i < bars; i++) {
-      const val = dataArray[i * step] || 0;
-      const amp = val / 255;
-      const barLen = amp * maxBar * (0.4 + audioLevel * 0.8);
-      const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
-
-      const x1 = cx + Math.cos(angle) * innerR;
-      const y1 = cy + Math.sin(angle) * innerR;
-      const x2 = cx + Math.cos(angle) * (innerR + barLen);
-      const y2 = cy + Math.sin(angle) * (innerR + barLen);
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = `rgba(0, 180, 255, ${0.35 + amp * 0.65})`;
-      ctx.lineWidth = 2.4;
-      ctx.lineCap = "round";
-      ctx.stroke();
+    // Smooth frequency values
+    const amps = [];
+    for (let i = 0; i < points; i++) {
+      let sum = 0;
+      const idx = i * step;
+      for (let j = 0; j < step && idx + j < dataArray.length; j++) {
+        sum += dataArray[idx + j];
+      }
+      amps.push((sum / step) / 255);
     }
+
+    // Extra smoothing pass
+    const smooth = amps.slice();
+    for (let i = 0; i < points; i++) {
+      const prev = amps[(i - 1 + points) % points];
+      const next = amps[(i + 1) % points];
+      smooth[i] = (prev * 0.25 + amps[i] * 0.5 + next * 0.25);
+    }
+
+    ctx.beginPath();
+    for (let i = 0; i <= points; i++) {
+      const idx = i % points;
+      const amp = smooth[idx];
+      const r = baseR + amp * maxAmp * (0.6 + audioLevel * 0.5);
+      const angle = (idx / points) * Math.PI * 2 - Math.PI / 2;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, "rgba(0, 220, 255, 0.9)");
+    grad.addColorStop(0.5, "rgba(0, 180, 255, 0.85)");
+    grad.addColorStop(1, "rgba(80, 200, 255, 0.9)");
+
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2.6;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    // Subtle inner glow
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 
   function animate() {
