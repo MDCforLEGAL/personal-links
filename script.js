@@ -20,8 +20,8 @@
   document.documentElement.classList.add("perf-" + perf.tier);
 
   const PRESETS = {
-    high: { dprMax: 2, maxParticles: 120, spawn: 3, ambient: 25, typeName: 120, typeBio: 45, sendMs: 1100, particles: true, pointerGlow: true },
-    mid:  { dprMax: 1, maxParticles: 40,  spawn: 1, ambient: 8,  typeName: 70,  typeBio: 25, sendMs: 650,  particles: true, pointerGlow: false },
+    high: { dprMax: 2, maxParticles: 120, spawn: 3, ambient: 25, typeName: 120, typeBio: 45, sendMs: 1100, particles: false, pointerGlow: false },
+    mid:  { dprMax: 1, maxParticles: 40,  spawn: 1, ambient: 8,  typeName: 70,  typeBio: 25, sendMs: 650,  particles: false, pointerGlow: false },
     low:  { dprMax: 1, maxParticles: 0,   spawn: 0, ambient: 0,  typeName: 0,   typeBio: 0,  sendMs: 220,  particles: false, pointerGlow: false }
   };
   const SETTINGS = Object.assign({}, PRESETS[perf.tier]);
@@ -582,7 +582,7 @@
       resetSendOverlay();
       if (e.persisted) {
         animating = false;
-        startParticles();
+        // startParticles(); // disabled
     initAvatarViz();
       }
     });
@@ -598,7 +598,7 @@
 
   function init() {
     resetSendOverlay();
-    startParticles();
+    // startParticles(); // disabled
     initAvatarViz();
     initReveal();
     initSendAnim();
