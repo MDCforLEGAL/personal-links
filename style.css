@@ -23,6 +23,17 @@ html {
 
 body {
   background: #000 url("1000147320.png") center center / cover no-repeat fixed;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  z-index: 0;
+}
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -595,9 +606,15 @@ body {
 
 @media (max-width: 767px) {
   .hero {
-    padding-top: 0.5rem;
+    padding-top: 0;
+    align-items: flex-start;
+    padding-top: 3.5rem;
   }
   .avatar-ring {
-    margin-top: -1.5rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+  .hero-inner {
+    margin-top: -1rem;
   }
 }
