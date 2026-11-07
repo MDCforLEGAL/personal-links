@@ -255,7 +255,7 @@
     if (!avatarViz) return;
     avatarVizCtx = avatarViz.getContext("2d");
     // Size it properly
-    const size = window.innerWidth >= 768 ? Math.max(window.innerWidth, window.innerHeight) : 220;
+    const size = 220;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     avatarViz.width = size * dpr;
     avatarViz.height = size * dpr;
@@ -267,71 +267,51 @@
   function drawAvatarViz() {
     if (!avatarVizCtx || !analyser || !dataArray) return;
     const ctx = avatarVizCtx;
-    const isDesktop = window.innerWidth >= 768;
-    const w = avatarViz.width / (window.devicePixelRatio || 1);
-    const h = avatarViz.height / (window.devicePixelRatio || 1);
+    const w = 220;
+    const h = 220;
+    const cx = w / 2;
+    const cy = h / 2;
+    const innerR = 58;
+    const maxLen = 46;
 
     ctx.clearRect(0, 0, w, h);
     analyser.getByteFrequencyData(dataArray);
 
-    if (isDesktop) {
-      // Side bars on left and right of screen
-      const bars = 40;
-      const step = Math.max(1, Math.floor(dataArray.length / bars));
-      const maxH = h * 0.7;
-      const barW = 6;
-      const gap = (h - maxH) / 2;
+    const bars = 32; // per side
+    const step = Math.max(1, Math.floor(dataArray.length / bars));
 
-      for (let side = 0; side < 2; side++) {
-        for (let i = 0; i < bars; i++) {
-          let sum = 0;
-          const start = i * step;
-          for (let j = 0; j < step && start + j < dataArray.length; j++) {
-            sum += dataArray[start + j] * (start < dataArray.length * 0.3 ? 1.4 : 1);
-          }
-          const amp = Math.min(1, (sum / step) / 160);
-          const barH = amp * maxH * 0.9;
-          const x = side === 0 ? 30 + i * (barW + 3) : w - 30 - (i + 1) * (barW + 3);
-          const y = (h - barH) / 2;
-
-          ctx.fillStyle = `rgba(0, ${180 + amp * 75}, 255, ${0.55 + amp * 0.4})`;
-          ctx.fillRect(x, y, barW, barH);
+    // Draw left and right sides (mirrored)
+    for (let side = -1; side <= 1; side += 2) {
+      for (let i = 0; i < bars; i++) {
+        let sum = 0;
+        const start = i * step;
+        for (let j = 0; j < step && start + j < dataArray.length; j++) {
+          const v = dataArray[start + j];
+          const weight = (start + j) < dataArray.length * 0.3 ? 1.5 : 1.0;
+          sum += v * weight;
         }
-      }
-    } else {
-      // Mobile: circular around avatar
-      const cx = w / 2;
-      const cy = h / 2;
-      const innerR = 58;
-      const maxLen = 42;
-      const bars = 32;
-      const step = Math.max(1, Math.floor(dataArray.length / bars));
+        const amp = Math.min(1, (sum / step) / 170);
 
-      for (let side = -1; side <= 1; side += 2) {
-        for (let i = 0; i < bars; i++) {
-          let sum = 0;
-          const start = i * step;
-          for (let j = 0; j < step && start + j < dataArray.length; j++) {
-            sum += dataArray[start + j];
-          }
-          const amp = Math.min(1, (sum / step) / 170);
-          const barLen = amp * maxLen;
-          const t = i / (bars - 1);
-          const angle = side === 1 ? -Math.PI / 2 + t * Math.PI : Math.PI / 2 + t * Math.PI;
+        const barLen = amp * maxLen;
+        // Left side: angles from PI/2 to 3PI/2, right side: -PI/2 to PI/2
+        const t = i / (bars - 1);
+        const angle = side === 1
+          ? -Math.PI / 2 + t * Math.PI
+          : Math.PI / 2 + t * Math.PI;
 
-          const x1 = cx + Math.cos(angle) * innerR;
-          const y1 = cy + Math.sin(angle) * innerR;
-          const x2 = cx + Math.cos(angle) * (innerR + barLen);
-          const y2 = cy + Math.sin(angle) * (innerR + barLen);
+        const x1 = cx + Math.cos(angle) * innerR;
+        const y1 = cy + Math.sin(angle) * innerR;
+        const x2 = cx + Math.cos(angle) * (innerR + barLen);
+        const y2 = cy + Math.sin(angle) * (innerR + barLen);
 
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.strokeStyle = `rgba(0, ${190 + amp * 65}, 255, ${0.5 + amp * 0.5})`;
-          ctx.lineWidth = 3.2;
-          ctx.lineCap = "round";
-          ctx.stroke();
-        }
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        const alpha = 0.5 + amp * 0.5;
+        ctx.strokeStyle = `rgba(0, ${190 + amp * 65}, 255, ${alpha})`;
+        ctx.lineWidth = 3.4;
+        ctx.lineCap = "round";
+        ctx.stroke();
       }
     }
   }
@@ -354,7 +334,7 @@
     }
 
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
     ctx.fillRect(0, 0, width, height);
 
     for (let i = particles.length - 1; i >= 0; i--) {
