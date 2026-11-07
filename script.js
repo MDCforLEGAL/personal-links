@@ -271,42 +271,48 @@
     const h = 220;
     const cx = w / 2;
     const cy = h / 2;
-    const innerR = 58; // clear of avatar
-    const maxLen = 48;
+    const innerR = 58;
+    const maxLen = 46;
 
     ctx.clearRect(0, 0, w, h);
     analyser.getByteFrequencyData(dataArray);
 
-    const bars = 64;
+    const bars = 32; // per side
     const step = Math.max(1, Math.floor(dataArray.length / bars));
 
-    // Bass-heavy weighting for more aggressive response
-    for (let i = 0; i < bars; i++) {
-      let sum = 0;
-      const start = i * step;
-      for (let j = 0; j < step && start + j < dataArray.length; j++) {
-        const v = dataArray[start + j];
-        const weight = (start + j) < dataArray.length * 0.25 ? 1.6 : 1.0; // boost bass
-        sum += v * weight;
+    // Draw left and right sides (mirrored)
+    for (let side = -1; side <= 1; side += 2) {
+      for (let i = 0; i < bars; i++) {
+        let sum = 0;
+        const start = i * step;
+        for (let j = 0; j < step && start + j < dataArray.length; j++) {
+          const v = dataArray[start + j];
+          const weight = (start + j) < dataArray.length * 0.3 ? 1.5 : 1.0;
+          sum += v * weight;
+        }
+        const amp = Math.min(1, (sum / step) / 170);
+
+        const barLen = amp * maxLen;
+        // Left side: angles from PI/2 to 3PI/2, right side: -PI/2 to PI/2
+        const t = i / (bars - 1);
+        const angle = side === 1
+          ? -Math.PI / 2 + t * Math.PI
+          : Math.PI / 2 + t * Math.PI;
+
+        const x1 = cx + Math.cos(angle) * innerR;
+        const y1 = cy + Math.sin(angle) * innerR;
+        const x2 = cx + Math.cos(angle) * (innerR + barLen);
+        const y2 = cy + Math.sin(angle) * (innerR + barLen);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        const alpha = 0.5 + amp * 0.5;
+        ctx.strokeStyle = `rgba(0, ${190 + amp * 65}, 255, ${alpha})`;
+        ctx.lineWidth = 3.4;
+        ctx.lineCap = "round";
+        ctx.stroke();
       }
-      const amp = Math.min(1, (sum / step) / 180); // higher sensitivity
-
-      const barLen = amp * maxLen;
-      const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
-
-      const x1 = cx + Math.cos(angle) * innerR;
-      const y1 = cy + Math.sin(angle) * innerR;
-      const x2 = cx + Math.cos(angle) * (innerR + barLen);
-      const y2 = cy + Math.sin(angle) * (innerR + barLen);
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      const alpha = 0.45 + amp * 0.55;
-      ctx.strokeStyle = `rgba(0, ${200 + amp * 55}, 255, ${alpha})`;
-      ctx.lineWidth = 3.2;
-      ctx.lineCap = "round";
-      ctx.stroke();
     }
   }
 
@@ -489,30 +495,7 @@
     });
   }
 
-  function initMusicPlayer() {
-    const btn = document.getElementById("music-btn");
-    const modal = document.getElementById("music-modal");
-    const closeBtn = document.getElementById("music-close");
-    if (!btn || !modal) return;
-
-    function openModal() {
-      modal.classList.add("show");
-      modal.setAttribute("aria-hidden", "false");
-    }
-
-    function closeModal() {
-      modal.classList.remove("show");
-      modal.setAttribute("aria-hidden", "true");
-    }
-
-    btn.addEventListener("click", openModal);
-    if (closeBtn) closeBtn.addEventListener("click", closeModal);
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) closeModal();
-    });
-  }
-
-  function initBackgroundMusic() {
+    function initBackgroundMusic() {
   const audio = document.getElementById("bg-music");
   const muteBtn = document.getElementById("mute-btn");
   const muteIcon = document.getElementById("mute-icon");
@@ -619,7 +602,6 @@
     initAvatarViz();
     initReveal();
     initSendAnim();
-    initMusicPlayer();
     initBackgroundMusic();
     initPerfBanner();
     startTypewriters();
