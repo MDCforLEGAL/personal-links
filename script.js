@@ -566,16 +566,19 @@
         await audio.play();
         audioStarted = true;
       } catch (e) {
-        // Autoplay blocked — will retry on next gesture
+        // Autoplay blocked
       }
     }
   }
 
-  const startOnce = () => {
-    startAudio();
-  };
-  document.addEventListener("click", startOnce);
-  document.addEventListener("touchstart", startOnce, { passive: true });
+  // Try immediately
+  startAudio();
+
+  // Retry on any user interaction
+  const startOnce = () => { startAudio(); };
+  ["click", "touchstart", "keydown", "scroll"].forEach(ev => {
+    document.addEventListener(ev, startOnce, { passive: true, once: false });
+  });
 
   if (muteBtn) {
     muteBtn.addEventListener("click", async (e) => {
