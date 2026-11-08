@@ -106,17 +106,6 @@ body::before {
   box-shadow: 0 0 40px var(--blue-glow);
 }
 
-.avatar-viz {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 220px;
-  height: 220px;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 2;
-}
-
 .avatar {
   width: 100%;
   height: 100%;
@@ -344,18 +333,11 @@ body::before {
 .perf-banner button { background: #222; color: #fff; border: 1px solid #333; border-radius: 8px; padding: 0.4rem 0.7rem; cursor: pointer; }
 
 @media (max-width: 767px) {
-  .hero { padding-top: 3.5rem; align-items: flex-start; }
-  .avatar-ring { margin-top: 0; margin-bottom: 1rem; }
+  .hero { padding-top: 1rem; align-items: center; }
 }
 
 @media (min-width: 768px) {
-  .avatar-viz {
-    width: 100vw !important;
-    height: 100vh !important;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
+  @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; }
   .send-overlay { display: none !important; }
 }
