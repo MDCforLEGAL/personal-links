@@ -117,8 +117,16 @@ body::before {
 }
 
 @keyframes windWave {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.08); opacity: 0.15; }
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.06); opacity: 0.2; }
+}
+
+.avatar-ring.beat::before {
+  animation: none;
+  transform: scale(1.15);
+  opacity: 0.7;
+  border-color: rgba(0, 220, 255, 0.8);
+  transition: transform 0.08s ease-out, opacity 0.08s ease-out;
 }
 
 .avatar {
@@ -140,13 +148,13 @@ body::before {
   font-weight: 700;
   letter-spacing: -0.03em;
   margin-bottom: 0.75rem;
-  color: #c8c8c8;
+  color: #0a1a3a;
   min-height: 1.2em;
 }
 
 .bio {
   font-size: 1.05rem;
-  color: #6a6a6a;
+  color: #111;
   margin-bottom: 3rem;
   line-height: 1.6;
   min-height: 3.2em;
@@ -171,7 +179,7 @@ body::before {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  color: #6a6a6a;
+  color: #111;
   font-size: 0.85rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -200,7 +208,7 @@ body::before {
   margin-bottom: 2.5rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6a6a6a;
+  color: #111;
 }
 
 .link-grid {
@@ -264,8 +272,8 @@ body::before {
 }
 
 .link-name { font-weight: 600; font-size: 1.05rem; }
-.link-handle { font-size: 0.85rem; color: #6a6a6a; }
-.link-arrow { font-size: 1.3rem; color: #6a6a6a; }
+.link-handle { font-size: 0.85rem; color: #111; }
+.link-arrow { font-size: 1.3rem; color: #111; }
 
 .footer {
   text-align: center;
@@ -335,4 +343,43 @@ body::before {
   @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; }
   .send-overlay { display: none !important; }
+}
+
+.send--instagram .send-icon { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); animation: flashPop 0.9s ease forwards; }
+.send--youtube .send-icon { background: #FF0000; animation: playPulse 0.9s ease forwards; }
+.send--telegram .send-icon { background: #26A5E4; animation: planeFly 0.9s ease forwards; }
+.send--discord .send-icon, .send--mydcbot .send-icon { background: linear-gradient(135deg, #5865F2, #7289da); animation: bounceOut 0.9s ease forwards; }
+.send--github .send-icon { background: #24292e; animation: spinOut 0.9s ease forwards; }
+.send--aistudio .send-icon { background: linear-gradient(135deg, #7c3aed, #06b6d4); animation: glowRise 0.9s ease forwards; }
+.send--robloxscripts .send-icon { background: linear-gradient(135deg, #00a2ff, #0070cc); animation: bounceOut 0.9s ease forwards; }
+
+@keyframes flashPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  30% { transform: scale(1.15); opacity: 1; filter: brightness(3); }
+  100% { transform: translateY(-40vh) scale(0.4); opacity: 0; }
+}
+@keyframes playPulse {
+  0% { transform: scale(0.6); opacity: 0; }
+  25% { transform: scale(1.1); opacity: 1; }
+  100% { transform: translateY(-35vh) scale(0.3); opacity: 0; }
+}
+@keyframes planeFly {
+  0% { transform: translateX(-20px) rotate(-15deg) scale(0.6); opacity: 0; }
+  20% { transform: translateX(0) rotate(0) scale(1); opacity: 1; }
+  100% { transform: translateX(40vw) translateY(-30vh) rotate(20deg) scale(0.3); opacity: 0; }
+}
+@keyframes bounceOut {
+  0% { transform: scale(0.5); opacity: 0; }
+  30% { transform: scale(1.12); opacity: 1; }
+  100% { transform: translateY(-38vh) scale(0.35); opacity: 0; }
+}
+@keyframes spinOut {
+  0% { transform: rotate(0) scale(0.5); opacity: 0; }
+  25% { transform: rotate(20deg) scale(1.05); opacity: 1; }
+  100% { transform: rotate(280deg) translate(25vw, -35vh) scale(0.25); opacity: 0; }
+}
+@keyframes glowRise {
+  0% { transform: scale(0.5); opacity: 0; box-shadow: 0 0 0 transparent; }
+  30% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 30px rgba(124,58,237,0.6); }
+  100% { transform: translateY(-36vh) scale(0.3); opacity: 0; }
 }
