@@ -1,8 +1,3 @@
-/* =====================================================
-   Personal Links Page - Adaptive performance + particles
-   Uses only public browser APIs (no tracking / no fingerprint send)
-   ===================================================== */
-
 (() => {
   "use strict";
 
@@ -11,207 +6,71 @@
   const forceHigh = localStorage.getItem(FORCE_KEY) === "1";
 
   const perf = detectPerformance();
-  if (forceHigh) {
-    perf.tier = "high";
-    perf.locked = true;
-  }
+  if (forceHigh) perf.tier = "high";
 
   document.documentElement.setAttribute("data-perf", perf.tier);
-  document.documentElement.classList.add("perf-" + perf.tier);
 
   const PRESETS = {
-    high: { dprMax: 2, maxParticles: 120, spawn: 3, ambient: 25, typeName: 120, typeBio: 45, sendMs: 1100, particles: false, pointerGlow: false },
-    mid:  { dprMax: 1, maxParticles: 40,  spawn: 1, ambient: 8,  typeName: 70,  typeBio: 25, sendMs: 650,  particles: false, pointerGlow: false },
-    low:  { dprMax: 1, maxParticles: 0,   spawn: 0, ambient: 0,  typeName: 0,   typeBio: 0,  sendMs: 220,  particles: false, pointerGlow: false }
+    high: { maxParticles: 80, spawn: 2, ambient: 15, particles: true },
+    mid:  { maxParticles: 30, spawn: 1, ambient: 6, particles: true },
+    low:  { maxParticles: 0, spawn: 0, ambient: 0, particles: false }
   };
   const SETTINGS = Object.assign({}, PRESETS[perf.tier]);
 
   function detectPerformance() {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const cores = navigator.hardwareConcurrency || 4;
     const ram = navigator.deviceMemory || 4;
-    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    const saveData = !!(conn && conn.saveData);
-    const slowNet = !!(conn && /2g|slow-2g/.test(conn.effectiveType || ""));
-    const dpr = window.devicePixelRatio || 1;
-    const small = Math.min(window.innerWidth, window.innerHeight) < 400;
-    const lowEndHint = cores <= 4 && ram <= 3;
-
-    let score = 8;
-    if (reduced) score -= 6;
-    if (saveData) score -= 3;
-    if (slowNet) score -= 2;
-    if (cores <= 2) score -= 3;
-    else if (cores <= 4) score -= 1;
-    if (ram <= 2) score -= 3;
-    else if (ram <= 4) score -= 1;
-    if (dpr >= 3 && lowEndHint) score -= 1;
-    if (small && lowEndHint) score -= 1;
-
     let tier = "high";
-    if (score <= 3) tier = "low";
-    else if (score <= 6) tier = "mid";
-
-    return { tier, score, reduced, cores, ram, locked: false };
-  }
-
-  function showPerfBanner() {
-    const banner = document.getElementById("perf-banner");
-    if (!banner) return;
-    if (sessionStorage.getItem(DISMISS_KEY) === "1") return;
-    banner.classList.add("show");
-    banner.removeAttribute("hidden");
-  }
-
-  function hidePerfBanner() {
-    const banner = document.getElementById("perf-banner");
-    if (!banner) return;
-    banner.classList.remove("show");
-  }
-
-  function initPerfBanner() {
-    const keepBtn = document.getElementById("perf-keep");
-    const okBtn = document.getElementById("perf-ok");
-    if (keepBtn) {
-      keepBtn.addEventListener("click", () => {
-        localStorage.setItem(FORCE_KEY, "1");
-        sessionStorage.removeItem(DISMISS_KEY);
-        location.reload();
-      });
-    }
-    if (okBtn) {
-      okBtn.addEventListener("click", () => {
-        localStorage.removeItem(FORCE_KEY);
-        sessionStorage.setItem(DISMISS_KEY, "1");
-        hidePerfBanner();
-      });
-    }
-    if (!perf.locked && perf.tier !== "high") {
-      setTimeout(showPerfBanner, 700);
-    }
-  }
-
-  function watchFpsAndDowngrade() {
-    if (perf.locked || perf.tier === "low") return;
-    let frames = 0;
-    let last = performance.now();
-    function tick(now) {
-      if (perf.locked) return;
-      frames++;
-      if (now - last >= 1500) {
-        const fps = (frames * 1000) / (now - last);
-        frames = 0;
-        last = now;
-        if (fps < 40 && perf.tier === "high") {
-          applyDowngrade("mid");
-        } else if (fps < 28) {
-          applyDowngrade("low");
-          return;
-        }
-      }
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-  }
-
-  function applyDowngrade(tier) {
-    if (perf.locked) return;
-    perf.tier = tier;
-    document.documentElement.setAttribute("data-perf", tier);
-    document.documentElement.classList.remove("perf-high", "perf-mid", "perf-low");
-    document.documentElement.classList.add("perf-" + tier);
-    Object.assign(SETTINGS, PRESETS[tier]);
-    if (tier === "low") {
-      particles.length = 0;
-      if (canvas) {
-        const c = canvas.getContext("2d");
-        if (c) c.clearRect(0, 0, canvas.width, canvas.height);
-        canvas.style.display = "none";
-      }
-    } else if (tier === "mid") {
-      while (particles.length > SETTINGS.maxParticles) particles.pop();
-    }
-    showPerfBanner();
+    if (cores <= 2 || ram <= 2) tier = "low";
+    else if (cores <= 4 || ram <= 4) tier = "mid";
+    return { tier };
   }
 
   const canvas = document.getElementById("particles");
-  const ctx = canvas ? canvas.getContext("2d", { alpha: true }) : null;
-
-  let width = 0;
-  let height = 0;
-  let dpr = Math.min(window.devicePixelRatio || 1, SETTINGS.dprMax);
-
+  const ctx = canvas ? canvas.getContext("2d") : null;
+  let width = 0, height = 0;
   const particles = [];
-  let pointer = { x: -9999, y: -9999, active: false };
   let animating = false;
 
-  const COLORS = [
-    "rgba(0, 180, 255,",
-    "rgba(0, 140, 255,",
-    "rgba(80, 200, 255,",
-    "rgba(0, 220, 255,",
-  ];
-
-  // Audio reactive state
-  let audioContext = null;
-  let analyser = null;
-  let dataArray = null;
-  let audioLevel = 0;
+  let audioContext = null, analyser = null, dataArray = null, audioLevel = 0;
+  let avatarViz = null, avatarVizCtx = null;
 
   class Particle {
-    constructor(x, y, isAmbient = false) {
-      this.x = x;
-      this.y = y;
-      this.isAmbient = isAmbient;
-      const angle = Math.random() * Math.PI * 2;
-      const speed = isAmbient ? 0.15 + Math.random() * 0.35 : 0.8 + Math.random() * 2.2;
-      this.vx = Math.cos(angle) * speed;
-      this.vy = Math.sin(angle) * speed;
-      this.baseSize = isAmbient ? 1 + Math.random() * 1.8 : 2 + Math.random() * 3.5;
-      this.size = this.baseSize;
+    constructor(x, y, ambient = false) {
+      this.x = x; this.y = y; this.ambient = ambient;
+      const a = Math.random() * Math.PI * 2;
+      const s = ambient ? 0.2 + Math.random() * 0.3 : 0.8 + Math.random() * 1.5;
+      this.vx = Math.cos(a) * s; this.vy = Math.sin(a) * s;
+      this.size = ambient ? 1 + Math.random() * 1.5 : 2 + Math.random() * 2.5;
       this.life = 1;
-      this.decay = isAmbient ? 0.0008 + Math.random() * 0.0015 : 0.012 + Math.random() * 0.018;
-      this.color = COLORS[(Math.random() * COLORS.length) | 0];
-      this.alpha = isAmbient ? 0.25 + Math.random() * 0.35 : 0.7 + Math.random() * 0.3;
+      this.decay = ambient ? 0.001 : 0.015;
+      this.color = "rgba(0, 180, 255,";
     }
     update() {
-      this.x += this.vx;
-      this.y += this.vy;
-      this.vx *= 0.985;
-      this.vy *= 0.985;
-      // React to music: bigger on louder
-      this.size = this.baseSize * (1 + audioLevel * 0.8);
-      if (this.isAmbient) {
-        this.life -= this.decay;
-        if (this.life <= 0) this.resetAmbient();
-      } else {
-        this.life -= this.decay;
+      this.x += this.vx; this.y += this.vy;
+      this.vx *= 0.98; this.vy *= 0.98;
+      this.life -= this.decay;
+      if (this.ambient && this.life <= 0) {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.life = 1;
       }
-    }
-    resetAmbient() {
-      this.x = Math.random() * width;
-      this.y = Math.random() * height;
-      this.life = 1;
-      this.vx = (Math.random() - 0.5) * 0.6;
-      this.vy = (Math.random() - 0.5) * 0.6;
-      this.baseSize = 1 + Math.random() * 1.8;
-      this.size = this.baseSize;
-      this.alpha = 0.25 + Math.random() * 0.35;
     }
     draw() {
       if (this.life <= 0 || !ctx) return;
-      const a = this.alpha * this.life;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fillStyle = this.color + a + ")";
+      ctx.fillStyle = this.color + (0.4 * this.life) + ")";
       ctx.fill();
-      if (SETTINGS.pointerGlow && this.size > 2.2 && a > 0.3) {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * (2.2 + audioLevel), 0, Math.PI * 2);
-        ctx.fillStyle = this.color + (a * (0.18 + audioLevel * 0.2)) + ")";
-        ctx.fill();
-      }
     }
+  }
+
+  function resize() {
+    if (!canvas || !ctx) return;
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
   }
 
   function initAmbient() {
@@ -222,40 +81,37 @@
     }
   }
 
-  function spawnParticles(x, y, count) {
-    if (!SETTINGS.particles) return;
-    const n = count == null ? SETTINGS.spawn : count;
-    for (let i = 0; i < n; i++) {
-      if (particles.length >= SETTINGS.maxParticles) {
-        const idx = particles.findIndex(p => !p.isAmbient);
-        if (idx !== -1) particles.splice(idx, 1);
-        else break;
-      }
-      particles.push(new Particle(x, y, false));
+  function animate() {
+    if (!SETTINGS.particles || !ctx) { animating = false; return; }
+    animating = true;
+    ctx.clearRect(0, 0, width, height);
+    if (analyser && dataArray) {
+      analyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+      audioLevel = Math.min(1, (sum / dataArray.length) / 128);
     }
+    for (let i = particles.length - 1; i >= 0; i--) {
+      particles[i].update();
+      particles[i].draw();
+      if (!particles[i].ambient && particles[i].life <= 0) particles.splice(i, 1);
+    }
+    drawAvatarViz();
+    requestAnimationFrame(animate);
   }
 
-  function resize() {
-    if (!canvas || !ctx) return;
-    width = window.innerWidth;
-    height = window.innerHeight;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = width + "px";
-    canvas.style.height = height + "px";
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  function startParticles() {
+    if (!SETTINGS.particles || animating) return;
+    resize();
+    initAmbient();
+    requestAnimationFrame(animate);
   }
-
-
-  let avatarViz = null;
-  let avatarVizCtx = null;
 
   function initAvatarViz() {
     avatarViz = document.getElementById("avatar-viz");
     if (!avatarViz) return;
     avatarVizCtx = avatarViz.getContext("2d");
-    // Size it properly
-    const size = 220;
+    const size = window.innerWidth >= 768 ? Math.max(window.innerWidth, window.innerHeight) : 220;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     avatarViz.width = size * dpr;
     avatarViz.height = size * dpr;
@@ -267,142 +123,69 @@
   function drawAvatarViz() {
     if (!avatarVizCtx || !analyser || !dataArray) return;
     const ctx = avatarVizCtx;
-    const w = 220;
-    const h = 220;
-    const cx = w / 2;
-    const cy = h / 2;
-    const innerR = 58;
-    const maxLen = 46;
-
+    const isDesktop = window.innerWidth >= 768;
+    const w = avatarViz.width / (window.devicePixelRatio || 1);
+    const h = avatarViz.height / (window.devicePixelRatio || 1);
     ctx.clearRect(0, 0, w, h);
     analyser.getByteFrequencyData(dataArray);
 
-    const bars = 32; // per side
-    const step = Math.max(1, Math.floor(dataArray.length / bars));
-
-    // Draw left and right sides (mirrored)
-    for (let side = -1; side <= 1; side += 2) {
-      for (let i = 0; i < bars; i++) {
-        let sum = 0;
-        const start = i * step;
-        for (let j = 0; j < step && start + j < dataArray.length; j++) {
-          const v = dataArray[start + j];
-          const weight = (start + j) < dataArray.length * 0.3 ? 1.5 : 1.0;
-          sum += v * weight;
+    if (isDesktop) {
+      const bars = 36;
+      const step = Math.max(1, Math.floor(dataArray.length / bars));
+      const maxH = h * 0.65;
+      for (let side = 0; side < 2; side++) {
+        for (let i = 0; i < bars; i++) {
+          let sum = 0;
+          const start = i * step;
+          for (let j = 0; j < step && start + j < dataArray.length; j++) sum += dataArray[start + j];
+          const amp = Math.min(1, (sum / step) / 150);
+          const barH = amp * maxH;
+          const x = side === 0 ? 24 + i * 9 : w - 24 - (i + 1) * 9;
+          const y = (h - barH) / 2;
+          ctx.fillStyle = `rgba(0, ${180 + amp * 75}, 255, ${0.5 + amp * 0.5})`;
+          ctx.fillRect(x, y, 5, barH);
         }
-        const amp = Math.min(1, (sum / step) / 170);
-
-        const barLen = amp * maxLen;
-        // Left side: angles from PI/2 to 3PI/2, right side: -PI/2 to PI/2
-        const t = i / (bars - 1);
-        const angle = side === 1
-          ? -Math.PI / 2 + t * Math.PI
-          : Math.PI / 2 + t * Math.PI;
-
-        const x1 = cx + Math.cos(angle) * innerR;
-        const y1 = cy + Math.sin(angle) * innerR;
-        const x2 = cx + Math.cos(angle) * (innerR + barLen);
-        const y2 = cy + Math.sin(angle) * (innerR + barLen);
-
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        const alpha = 0.5 + amp * 0.5;
-        ctx.strokeStyle = `rgba(0, ${190 + amp * 65}, 255, ${alpha})`;
-        ctx.lineWidth = 3.4;
-        ctx.lineCap = "round";
-        ctx.stroke();
+      }
+    } else {
+      const cx = w / 2, cy = h / 2, innerR = 58, maxLen = 40, bars = 28;
+      const step = Math.max(1, Math.floor(dataArray.length / bars));
+      for (let side = -1; side <= 1; side += 2) {
+        for (let i = 0; i < bars; i++) {
+          let sum = 0;
+          const start = i * step;
+          for (let j = 0; j < step && start + j < dataArray.length; j++) sum += dataArray[start + j];
+          const amp = Math.min(1, (sum / step) / 160);
+          const barLen = amp * maxLen;
+          const t = i / (bars - 1);
+          const angle = side === 1 ? -Math.PI / 2 + t * Math.PI : Math.PI / 2 + t * Math.PI;
+          const x1 = cx + Math.cos(angle) * innerR;
+          const y1 = cy + Math.sin(angle) * innerR;
+          const x2 = cx + Math.cos(angle) * (innerR + barLen);
+          const y2 = cy + Math.sin(angle) * (innerR + barLen);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.strokeStyle = `rgba(0, ${190 + amp * 65}, 255, ${0.55 + amp * 0.45})`;
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          ctx.stroke();
+        }
       }
     }
   }
 
-  function animate() {
-    if (!SETTINGS.particles || !ctx) {
-      animating = false;
-      return;
-    }
-    animating = true;
-
-    // Update audio level
-    if (analyser && dataArray) {
-      analyser.getByteFrequencyData(dataArray);
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-      audioLevel = Math.min(1, (sum / dataArray.length) / 128);
-    } else {
-      audioLevel *= 0.9;
-    }
-
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
-    ctx.fillRect(0, 0, width, height);
-
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.update();
-      p.draw();
-      if (!p.isAmbient && p.life <= 0) particles.splice(i, 1);
-    }
-
-    if (SETTINGS.pointerGlow && pointer.active) {
-      const glowSize = 80 + audioLevel * 40;
-      const gradient = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, glowSize);
-      gradient.addColorStop(0, "rgba(0, 180, 255, " + (0.12 + audioLevel * 0.15) + ")");
-      gradient.addColorStop(0.5, "rgba(0, 140, 255, 0.04)");
-      gradient.addColorStop(1, "rgba(0, 100, 255, 0)");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(pointer.x - glowSize, pointer.y - glowSize, glowSize * 2, glowSize * 2);
-    }
-
-    // Extra ambient spawn on strong beats
-    if (audioLevel > 0.45 && Math.random() < 0.15 && SETTINGS.particles) {
-      spawnParticles(Math.random() * width, Math.random() * height, 1);
-    }
-
-    drawAvatarViz();
-    requestAnimationFrame(animate);
-  }
-
-  function startParticles() {
-    if (!SETTINGS.particles || animating) return;
-    resize();
-    initAmbient();
-    drawAvatarViz();
-    requestAnimationFrame(animate);
-  }
-
-  function onPointerMove(x, y) {
-    pointer.x = x;
-    pointer.y = y;
-    pointer.active = true;
-    spawnParticles(x, y);
-  }
-
-  if (SETTINGS.particles) {
-    window.addEventListener("resize", resize, { passive: true });
-  } else if (canvas) {
-    canvas.style.display = "none";
-  }
-
-  function typeWriter(element, text, speed, callback) {
-    if (!speed) {
-      element.innerHTML = text.replace(/\n/g, "<br>");
-      element.classList.add("typed");
-      if (callback) callback();
-      return;
-    }
+  function typeWriter(el, text, speed, cb) {
+    if (!speed) { el.textContent = text; if (cb) cb(); return; }
     let i = 0;
-    element.innerHTML = "";
-    element.classList.add("typing");
+    el.textContent = "";
+    el.classList.add("typing");
     function type() {
       if (i < text.length) {
-        element.innerHTML += text.charAt(i) === "\n" ? "<br>" : text.charAt(i);
-        i++;
+        el.textContent += text[i++];
         setTimeout(type, speed);
       } else {
-        element.classList.remove("typing");
-        element.classList.add("typed");
-        if (callback) callback();
+        el.classList.remove("typing");
+        if (cb) cb();
       }
     }
     type();
@@ -411,54 +194,34 @@
   function startTypewriters() {
     const nameEl = document.getElementById("type-name");
     const bioEl = document.getElementById("type-bio");
-    const hint = document.querySelector(".scroll-hint");
-    typeWriter(nameEl, "MDC", SETTINGS.typeName, () => {
-      setTimeout(() => {
-        typeWriter(bioEl, "Hello 👋\nAll my social accounts and contact channels are here.", SETTINGS.typeBio, () => {
-          if (hint) hint.classList.add("visible");
-        });
-      }, SETTINGS.typeName ? 200 : 0);
+    typeWriter(nameEl, "MDC", 100, () => {
+      setTimeout(() => typeWriter(bioEl, "Hello 👋\nAll my social accounts and contact channels are here.", 35), 200);
     });
   }
 
   function initReveal() {
     const reveals = document.querySelectorAll(".reveal");
     if (perf.tier === "low") {
-      reveals.forEach((el) => el.classList.add("visible"));
+      reveals.forEach(el => el.classList.add("visible"));
       return;
     }
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("visible");
-          observer.unobserve(entry.target);
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add("visible");
+          obs.unobserve(e.target);
         }
       });
-    }, { threshold: 0.12, rootMargin: "0px 0px -30px 0px" });
-    reveals.forEach((el) => observer.observe(el));
+    }, { threshold: 0.1 });
+    reveals.forEach(el => obs.observe(el));
   }
 
-  const SEND_ICONS = {
-    telegram: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>',
-    instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
-    youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
-    discord: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028 14.09 14.09 0 001.226-1.994.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>',
-    github: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.76-1.605-2.665-.305-5.466-1.334-5.466-5.932 0-1.31.468-2.382 1.235-3.222-.123-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 013.003-.404c1.02.005 2.047.138 3.006.404 2.29-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.12 3.176.77.84 1.233 1.911 1.233 3.222 0 4.61-2.807 5.624-5.48 5.921.43.372.823 1.102.823 2.222 0 1.606-.015 2.898-.015 3.293 0 .322.216.694.825.576C20.565 21.796 24 17.297 24 12 24 5.37 18.627 0 12 0z"/></svg>',
-    aistudio: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
-    mydcbot: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028 14.09 14.09 0 001.226-1.994.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>',
-    robloxscripts: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>'
-  };
-
   let busy = false;
-
   function resetSendOverlay() {
     const overlay = document.getElementById("send-overlay");
     if (overlay) {
       overlay.classList.remove("show");
-      overlay.className = "send-overlay";
       overlay.setAttribute("aria-hidden", "true");
-      overlay.style.opacity = "";
-      overlay.style.pointerEvents = "";
     }
     busy = false;
   }
@@ -467,146 +230,123 @@
     const overlay = document.getElementById("send-overlay");
     const iconEl = document.getElementById("send-icon");
     const labelEl = document.getElementById("send-label");
-    if (!overlay || !iconEl || !labelEl) return;
-    const platforms = ["telegram", "instagram", "youtube", "discord", "github", "aistudio", "mydcbot", "robloxscripts"];
-    document.querySelectorAll("a.link-card").forEach((link) => {
+    if (!overlay) return;
+    document.querySelectorAll("a.link-card").forEach(link => {
       const href = link.getAttribute("href");
       link.setAttribute("data-href", href);
-      link.removeAttribute("target");
       link.setAttribute("href", "#");
       link.addEventListener("click", (e) => {
         e.preventDefault();
-        e.stopPropagation();
         if (busy) return;
         busy = true;
         const dest = link.getAttribute("data-href") || href;
-        if (perf.tier === "low") {
-          window.location.href = dest;
-          return;
-        }
+        if (perf.tier === "low") { window.location.href = dest; return; }
         const name = (link.querySelector(".link-name") || {}).textContent || "Opening";
-        const platform = platforms.find((p) => link.classList.contains(p)) || "default";
-        iconEl.innerHTML = SEND_ICONS[platform] || "";
         labelEl.textContent = "Opening " + name.trim() + "...";
-        overlay.className = "send-overlay show send--" + platform;
+        overlay.classList.add("show");
         overlay.setAttribute("aria-hidden", "false");
-        setTimeout(() => { window.location.href = dest; }, SETTINGS.sendMs);
-      }, true);
+        setTimeout(() => { window.location.href = dest; }, 900);
+      });
     });
   }
 
-    function initBackgroundMusic() {
-  const audio = document.getElementById("bg-music");
-  const muteBtn = document.getElementById("mute-btn");
-  const muteIcon = document.getElementById("mute-icon");
-  if (!audio) return;
+  function initBackgroundMusic() {
+    const audio = document.getElementById("bg-music");
+    const muteBtn = document.getElementById("mute-btn");
+    const muteIcon = document.getElementById("mute-icon");
+    if (!audio) return;
 
-  let audioStarted = false;
-  let sourceConnected = false;
+    let sourceConnected = false;
 
-  const mutePath = '<path d="M16.5 12c0-1.77-1-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
-  const unmutePath = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05c1.5-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+    const mutePath = '<path d="M16.5 12c0-1.77-1-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+    const unmutePath = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05c1.5-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
 
-  function updateMuteIcon() {
-    if (!muteIcon) return;
-    muteIcon.innerHTML = audio.muted ? mutePath : unmutePath;
-  }
+    function updateMuteIcon() {
+      if (muteIcon) muteIcon.innerHTML = audio.muted ? mutePath : unmutePath;
+    }
 
-  async function ensureContext() {
-    if (!audioContext && (window.AudioContext || window.webkitAudioContext)) {
+    async function ensureContext() {
+      if (!audioContext && (window.AudioContext || window.webkitAudioContext)) {
+        try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+      }
+      if (audioContext && audioContext.state === "suspended") {
+        try { await audioContext.resume(); } catch (e) {}
+      }
+    }
+
+    function connectAnalyser() {
+      if (sourceConnected || !audioContext) return;
       try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      } catch (e) {
-        return;
+        const source = audioContext.createMediaElementSource(audio);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 64;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+        sourceConnected = true;
+      } catch (e) {}
+    }
+
+    async function startAudio() {
+      await ensureContext();
+      connectAnalyser();
+      if (audio.paused) {
+        try { await audio.play(); } catch (e) {}
       }
     }
-    if (audioContext && audioContext.state === "suspended") {
-      try { await audioContext.resume(); } catch (e) {}
-    }
-  }
 
-  function connectAnalyser() {
-    if (sourceConnected || !audioContext || !audio) return;
-    try {
-      const source = audioContext.createMediaElementSource(audio);
-      analyser = audioContext.createAnalyser();
-      analyser.fftSize = 64;
-      dataArray = new Uint8Array(analyser.frequencyBinCount);
-      source.connect(analyser);
-      analyser.connect(audioContext.destination);
-      sourceConnected = true;
-    } catch (e) {
-      // Already connected or not supported — ignore
-    }
-  }
-
-  async function startAudio() {
-    if (audioStarted && !audio.paused) return;
-    await ensureContext();
-    connectAnalyser();
-    if (audio.paused) {
-      try {
-        await audio.play();
-        audioStarted = true;
-      } catch (e) {
-        // Autoplay blocked
-      }
-    }
-  }
-
-  // Try immediately
-  startAudio();
-
-  // Retry on any user interaction
-  const startOnce = () => { startAudio(); };
-  ["click", "touchstart", "keydown", "scroll"].forEach(ev => {
-    document.addEventListener(ev, startOnce, { passive: true, once: false });
-  });
-
-  if (muteBtn) {
-    muteBtn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      audio.muted = !audio.muted;
-      updateMuteIcon();
-      if (!audio.muted) {
-        await startAudio();
-      }
+    startAudio();
+    ["click", "touchstart", "keydown"].forEach(ev => {
+      document.addEventListener(ev, startAudio, { passive: true });
     });
-  }
-  updateMuteIcon();
-}
 
-  // Fix black screen when returning via browser back button (bfcache)
+    if (muteBtn) {
+      muteBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        audio.muted = !audio.muted;
+        updateMuteIcon();
+        if (!audio.muted) await startAudio();
+      });
+    }
+    updateMuteIcon();
+  }
+
   function setupPageRestore() {
     window.addEventListener("pageshow", (e) => {
       resetSendOverlay();
       if (e.persisted) {
         animating = false;
-        // startParticles(); // disabled
-    initAvatarViz();
+        startParticles();
       }
     });
-    window.addEventListener("pagehide", () => {
-      resetSendOverlay();
-    });
+    window.addEventListener("pagehide", resetSendOverlay);
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        resetSendOverlay();
-      }
+      if (document.visibilityState === "visible") resetSendOverlay();
     });
+  }
+
+  function initPerfBanner() {
+    const banner = document.getElementById("perf-banner");
+    const keep = document.getElementById("perf-keep");
+    const ok = document.getElementById("perf-ok");
+    if (keep) keep.addEventListener("click", () => { localStorage.setItem(FORCE_KEY, "1"); location.reload(); });
+    if (ok) ok.addEventListener("click", () => { sessionStorage.setItem(DISMISS_KEY, "1"); if (banner) banner.classList.remove("show"); });
+    if (perf.tier !== "high" && sessionStorage.getItem(DISMISS_KEY) !== "1") {
+      setTimeout(() => { if (banner) banner.classList.add("show"); }, 800);
+    }
   }
 
   function init() {
     resetSendOverlay();
-    // startParticles(); // disabled
+    startParticles();
     initAvatarViz();
     initReveal();
     initSendAnim();
     initBackgroundMusic();
     initPerfBanner();
     startTypewriters();
-    watchFpsAndDowngrade();
     setupPageRestore();
+    window.addEventListener("resize", resize);
   }
 
   if (document.readyState === "loading") {
