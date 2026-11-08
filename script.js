@@ -96,7 +96,6 @@
       particles[i].draw();
       if (!particles[i].ambient && particles[i].life <= 0) particles.splice(i, 1);
     }
-    drawAvatarViz();
     requestAnimationFrame(animate);
   }
 
@@ -107,74 +106,7 @@
     requestAnimationFrame(animate);
   }
 
-  function initAvatarViz() {
-    avatarViz = document.getElementById("avatar-viz");
-    if (!avatarViz) return;
-    avatarVizCtx = avatarViz.getContext("2d");
-    const size = window.innerWidth >= 768 ? Math.max(window.innerWidth, window.innerHeight) : 220;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    avatarViz.width = size * dpr;
-    avatarViz.height = size * dpr;
-    avatarViz.style.width = size + "px";
-    avatarViz.style.height = size + "px";
-    avatarVizCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
-  function drawAvatarViz() {
-    if (!avatarVizCtx || !analyser || !dataArray) return;
-    const ctx = avatarVizCtx;
-    const isDesktop = window.innerWidth >= 768;
-    const w = avatarViz.width / (window.devicePixelRatio || 1);
-    const h = avatarViz.height / (window.devicePixelRatio || 1);
-    ctx.clearRect(0, 0, w, h);
-    analyser.getByteFrequencyData(dataArray);
-
-    if (isDesktop) {
-      const bars = 36;
-      const step = Math.max(1, Math.floor(dataArray.length / bars));
-      const maxH = h * 0.65;
-      for (let side = 0; side < 2; side++) {
-        for (let i = 0; i < bars; i++) {
-          let sum = 0;
-          const start = i * step;
-          for (let j = 0; j < step && start + j < dataArray.length; j++) sum += dataArray[start + j];
-          const amp = Math.min(1, (sum / step) / 150);
-          const barH = amp * maxH;
-          const x = side === 0 ? 24 + i * 9 : w - 24 - (i + 1) * 9;
-          const y = (h - barH) / 2;
-          ctx.fillStyle = `rgba(0, ${180 + amp * 75}, 255, ${0.5 + amp * 0.5})`;
-          ctx.fillRect(x, y, 5, barH);
-        }
-      }
-    } else {
-      const cx = w / 2, cy = h / 2, innerR = 58, maxLen = 40, bars = 28;
-      const step = Math.max(1, Math.floor(dataArray.length / bars));
-      for (let side = -1; side <= 1; side += 2) {
-        for (let i = 0; i < bars; i++) {
-          let sum = 0;
-          const start = i * step;
-          for (let j = 0; j < step && start + j < dataArray.length; j++) sum += dataArray[start + j];
-          const amp = Math.min(1, (sum / step) / 160);
-          const barLen = amp * maxLen;
-          const t = i / (bars - 1);
-          const angle = side === 1 ? -Math.PI / 2 + t * Math.PI : Math.PI / 2 + t * Math.PI;
-          const x1 = cx + Math.cos(angle) * innerR;
-          const y1 = cy + Math.sin(angle) * innerR;
-          const x2 = cx + Math.cos(angle) * (innerR + barLen);
-          const y2 = cy + Math.sin(angle) * (innerR + barLen);
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.strokeStyle = `rgba(0, ${190 + amp * 65}, 255, ${0.55 + amp * 0.45})`;
-          ctx.lineWidth = 3;
-          ctx.lineCap = "round";
-          ctx.stroke();
-        }
-      }
-    }
-  }
-
-  function typeWriter(el, text, speed, cb) {
+      function typeWriter(el, text, speed, cb) {
     if (!speed) { el.textContent = text; if (cb) cb(); return; }
     let i = 0;
     el.textContent = "";
@@ -339,7 +271,6 @@
   function init() {
     resetSendOverlay();
     startParticles();
-    initAvatarViz();
     initReveal();
     initSendAnim();
     initBackgroundMusic();
