@@ -38,13 +38,13 @@
   class Particle {
     constructor(x, y, ambient = false) {
       this.x = x; this.y = y; this.ambient = ambient;
-      const a = Math.random() * Math.PI * 2;
-      const s = ambient ? 0.2 + Math.random() * 0.3 : 0.8 + Math.random() * 1.5;
-      this.vx = Math.cos(a) * s; this.vy = Math.sin(a) * s;
+      const s = ambient ? 0.4 + Math.random() * 0.6 : 0.8 + Math.random() * 1.2;
+      this.vx = s * (0.6 + Math.random() * 0.8);
+      this.vy = (Math.random() - 0.5) * 0.3;
       this.size = ambient ? 1 + Math.random() * 1.5 : 2 + Math.random() * 2.5;
       this.life = 1;
       this.decay = ambient ? 0.001 : 0.015;
-      this.color = "rgba(0, 180, 255,";
+      this.color = "rgba(255, 255, 255,";
     }
     update() {
       this.x += this.vx; this.y += this.vy;
@@ -60,7 +60,7 @@
       if (this.life <= 0 || !ctx) return;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fillStyle = this.color + (0.4 * this.life) + ")";
+      ctx.fillStyle = this.color + (0.25 * this.life) + ")";
       ctx.fill();
     }
   }
@@ -257,24 +257,12 @@
     });
   }
 
-  function initPerfBanner() {
-    const banner = document.getElementById("perf-banner");
-    const keep = document.getElementById("perf-keep");
-    const ok = document.getElementById("perf-ok");
-    if (keep) keep.addEventListener("click", () => { localStorage.setItem(FORCE_KEY, "1"); location.reload(); });
-    if (ok) ok.addEventListener("click", () => { sessionStorage.setItem(DISMISS_KEY, "1"); if (banner) banner.classList.remove("show"); });
-    if (perf.tier !== "high" && sessionStorage.getItem(DISMISS_KEY) !== "1") {
-      setTimeout(() => { if (banner) banner.classList.add("show"); }, 800);
-    }
-  }
-
-  function init() {
+    function init() {
     resetSendOverlay();
     startParticles();
     initReveal();
     initSendAnim();
     initBackgroundMusic();
-    initPerfBanner();
     startTypewriters();
     setupPageRestore();
     window.addEventListener("resize", resize);
