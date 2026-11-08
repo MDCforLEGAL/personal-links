@@ -129,12 +129,24 @@ body::before {
   transition: transform 0.08s ease-out, opacity 0.08s ease-out;
 }
 
+.avatar-viz {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200px;
+  height: 200px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
 .avatar {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   background: #111;
   overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 
 .avatar img {
@@ -336,7 +348,8 @@ body::before {
 
 
 @media (max-width: 767px) {
-  .hero { padding-top: 1rem; align-items: center; }
+  .hero { padding-top: 2rem; align-items: center; }
+  .avatar-ring { margin-bottom: 2rem; }
 }
 
 @media (min-width: 768px) {
