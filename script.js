@@ -2,18 +2,15 @@
   "use strict";
 
   const FORCE_KEY = "mdc-force-high";
-  const DISMISS_KEY = "mdc-perf-dismissed";
   const forceHigh = localStorage.getItem(FORCE_KEY) === "1";
-
   const perf = detectPerformance();
   if (forceHigh) perf.tier = "high";
-
   document.documentElement.setAttribute("data-perf", perf.tier);
 
   const PRESETS = {
-    high: { maxParticles: 80, spawn: 2, ambient: 15, particles: true },
-    mid:  { maxParticles: 30, spawn: 1, ambient: 6, particles: true },
-    low:  { maxParticles: 0, spawn: 0, ambient: 0, particles: false }
+    high: { maxParticles: 60, ambient: 12, particles: true },
+    mid:  { maxParticles: 25, ambient: 6, particles: true },
+    low:  { maxParticles: 0, ambient: 0, particles: false }
   };
   const SETTINGS = Object.assign({}, PRESETS[perf.tier]);
 
@@ -32,23 +29,24 @@
   const particles = [];
   let animating = false;
 
-  let audioContext = null, analyser = null, dataArray = null, audioLevel = 0;
+  let audioContext = null, analyser = null, dataArray = null;
+  let beatPeaks = []; // timestamps in seconds
+  let beatIntensity = 0;
   let avatarViz = null, avatarVizCtx = null;
 
   class Particle {
     constructor(x, y, ambient = false) {
       this.x = x; this.y = y; this.ambient = ambient;
-      const s = ambient ? 0.4 + Math.random() * 0.6 : 0.8 + Math.random() * 1.2;
-      this.vx = s * (0.6 + Math.random() * 0.8);
-      this.vy = (Math.random() - 0.5) * 0.3;
-      this.size = ambient ? 1 + Math.random() * 1.5 : 2 + Math.random() * 2.5;
+      const s = ambient ? 0.3 + Math.random() * 0.5 : 0.7 + Math.random() * 1.0;
+      this.vx = s * (0.5 + Math.random() * 0.7);
+      this.vy = (Math.random() - 0.5) * 0.25;
+      this.size = ambient ? 1 + Math.random() * 1.4 : 1.8 + Math.random() * 2;
       this.life = 1;
-      this.decay = ambient ? 0.001 : 0.015;
-      this.color = "rgba(255, 255, 255,";
+      this.decay = ambient ? 0.001 : 0.012;
     }
     update() {
       this.x += this.vx; this.y += this.vy;
-      this.vx *= 0.98; this.vy *= 0.98;
+      this.vx *= 0.985; this.vy *= 0.985;
       this.life -= this.decay;
       if (this.ambient && this.life <= 0) {
         this.x = Math.random() * width;
@@ -58,9 +56,10 @@
     }
     draw() {
       if (this.life <= 0 || !ctx) return;
+      const a = 0.22 * this.life * (1 + beatIntensity * 0.8);
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fillStyle = this.color + (0.25 * this.life) + ")";
+      ctx.arc(this.x, this.y, this.size * (1 + beatIntensity * 0.4), 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255," + a + ")";
       ctx.fill();
     }
   }
@@ -81,29 +80,76 @@
     }
   }
 
+  // --- Beat map analysis ---
+  async function analyzeBeats(url) {
+    try {
+      const res = await fetch(url);
+      const buf = await res.arrayBuffer();
+      const offline = new OfflineAudioContext(1, 44100 * 180, 44100);
+      const decoded = await offline.decodeAudioData(buf.slice(0));
+      const src = offline.createBufferSource();
+      src.buffer = decoded;
+      const filter = offline.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 150;
+      src.connect(filter);
+      filter.connect(offline.destination);
+      src.start(0);
+      const rendered = await offline.startRendering();
+      const data = rendered.getChannelData(0);
+      const sampleRate = rendered.sampleRate;
+      const peaks = [];
+      const windowSize = Math.floor(sampleRate * 0.05);
+      let maxInWindow = 0;
+      for (let i = 0; i < data.length; i += windowSize) {
+        let sum = 0;
+        const end = Math.min(i + windowSize, data.length);
+        for (let j = i; j < end; j++) sum += Math.abs(data[j]);
+        const avg = sum / (end - i);
+        if (avg > maxInWindow * 0.65 && avg > 0.04) {
+          peaks.push(i / sampleRate);
+          maxInWindow = avg;
+        } else if (avg > maxInWindow) {
+          maxInWindow = avg;
+        }
+      }
+      beatPeaks = peaks;
+    } catch (e) {
+      beatPeaks = [];
+    }
+  }
+
+  function getBeatIntensity(currentTime) {
+    if (!beatPeaks.length) return 0.15 + Math.sin(performance.now() / 700) * 0.05;
+    let closest = 999;
+    for (let i = 0; i < beatPeaks.length; i++) {
+      const d = Math.abs(beatPeaks[i] - currentTime);
+      if (d < closest) closest = d;
+      if (beatPeaks[i] > currentTime + 0.3) break;
+    }
+    if (closest < 0.08) return 1.0;
+    if (closest < 0.18) return 0.55;
+    return 0.12 + Math.sin(performance.now() / 600) * 0.04;
+  }
+
   function animate() {
     if (!SETTINGS.particles || !ctx) { animating = false; return; }
     animating = true;
     ctx.clearRect(0, 0, width, height);
-    if (analyser && dataArray) {
-      analyser.getByteFrequencyData(dataArray);
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-      const raw = (sum / dataArray.length) / 128;
-      audioLevel = Math.min(1, Math.max(0.15, raw));
+
+    const audio = document.getElementById("bg-music");
+    if (audio && !audio.paused) {
+      beatIntensity = getBeatIntensity(audio.currentTime);
     } else {
-      audioLevel = 0.15 + Math.sin(performance.now() / 800) * 0.06;
+      beatIntensity = 0.15 + Math.sin(performance.now() / 700) * 0.05;
     }
-    const ring = document.querySelector(".avatar-ring");
-    if (ring) {
-      if (audioLevel > 0.42) ring.classList.add("beat");
-      else ring.classList.remove("beat");
-    }
+
     for (let i = particles.length - 1; i >= 0; i--) {
       particles[i].update();
       particles[i].draw();
       if (!particles[i].ambient && particles[i].life <= 0) particles.splice(i, 1);
     }
+    drawAvatarViz();
     requestAnimationFrame(animate);
   }
 
@@ -114,7 +160,47 @@
     requestAnimationFrame(animate);
   }
 
-      function typeWriter(el, text, speed, cb) {
+  function initAvatarViz() {
+    avatarViz = document.getElementById("avatar-viz");
+    if (!avatarViz) return;
+    avatarVizCtx = avatarViz.getContext("2d");
+    const size = 200;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    avatarViz.width = size * dpr;
+    avatarViz.height = size * dpr;
+    avatarViz.style.width = size + "px";
+    avatarViz.style.height = size + "px";
+    avatarVizCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function drawAvatarViz() {
+    if (!avatarVizCtx) return;
+    const c = avatarVizCtx;
+    const w = 200, h = 200, cx = 100, cy = 100;
+    c.clearRect(0, 0, w, h);
+    const bars = 36;
+    const baseR = 62;
+    const maxLen = 28 + beatIntensity * 22;
+    for (let i = 0; i < bars; i++) {
+      const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
+      const wave = Math.sin(performance.now() / 400 + i * 0.3) * 0.15;
+      const amp = Math.min(1, beatIntensity + wave);
+      const len = amp * maxLen;
+      const x1 = cx + Math.cos(angle) * baseR;
+      const y1 = cy + Math.sin(angle) * baseR;
+      const x2 = cx + Math.cos(angle) * (baseR + len);
+      const y2 = cy + Math.sin(angle) * (baseR + len);
+      c.beginPath();
+      c.moveTo(x1, y1);
+      c.lineTo(x2, y2);
+      c.strokeStyle = "rgba(0," + (180 + amp * 75) + ",255," + (0.45 + amp * 0.5) + ")";
+      c.lineWidth = 2.8;
+      c.lineCap = "round";
+      c.stroke();
+    }
+  }
+
+  function typeWriter(el, text, speed, cb) {
     if (!speed) { el.textContent = text; if (cb) cb(); return; }
     let i = 0;
     el.textContent = "";
@@ -211,8 +297,6 @@
     if (!audio) return;
 
     let unlocked = false;
-    let sourceConnected = false;
-
     const mutePath = '<path d="M16.5 12c0-1.77-1-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
     const unmutePath = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05c1.5-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
 
@@ -221,38 +305,20 @@
     }
 
     async function unlockAndPlay() {
-      if (unlocked && !audio.paused) return;
       if (!audioContext && (window.AudioContext || window.webkitAudioContext)) {
         try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
       }
       if (audioContext && audioContext.state === "suspended") {
         try { await audioContext.resume(); } catch (e) {}
       }
-      if (!sourceConnected && audioContext) {
-        try {
-          const source = audioContext.createMediaElementSource(audio);
-          analyser = audioContext.createAnalyser();
-          analyser.fftSize = 64;
-          dataArray = new Uint8Array(analyser.frequencyBinCount);
-          source.connect(analyser);
-          analyser.connect(audioContext.destination);
-          sourceConnected = true;
-        } catch (e) {}
-      }
       if (audio.paused && !audio.muted) {
         try { await audio.play(); unlocked = true; } catch (e) {}
-      } else if (!audio.paused) {
-        unlocked = true;
       }
     }
 
-    // Unlock on first interaction
-    const onInteract = () => { unlockAndPlay(); };
     ["click", "touchstart", "scroll", "keydown"].forEach(ev => {
-      document.addEventListener(ev, onInteract, { passive: true, once: false });
+      document.addEventListener(ev, unlockAndPlay, { passive: true });
     });
-
-    // Try immediately (may be blocked)
     unlockAndPlay();
 
     if (muteBtn) {
@@ -268,6 +334,9 @@
       });
     }
     updateMuteIcon();
+
+    // Start beat analysis in background
+    analyzeBeats(audio.src);
   }
 
   function setupPageRestore() {
@@ -284,9 +353,10 @@
     });
   }
 
-    function init() {
+  function init() {
     resetSendOverlay();
     startParticles();
+    initAvatarViz();
     initReveal();
     initSendAnim();
     initBackgroundMusic();
